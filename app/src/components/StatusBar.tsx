@@ -47,7 +47,7 @@ export default function StatusBar() {
     <footer className="flex h-7 shrink-0 items-center justify-between border-t border-line bg-subtle px-4 text-[11px] text-ts">
       <div>{info}</div>
       <div className="flex items-center gap-3">
-        <span>{appName} v0.9.5</span>
+        <span>{appName} v0.9.6</span>
         <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--cal-sage-bar)]" />本地数据 · 已就绪</span>
       </div>
     </footer>

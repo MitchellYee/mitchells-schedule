@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('chronaDesktop', {
   moveFloat: (dx, dy) => ipcRenderer.invoke('float:move', dx, dy),
   saveFloatPos: () => ipcRenderer.invoke('float:save-pos'),
   renameApp: (name) => ipcRenderer.invoke('app:rename', name),
+  setIcon: (dataUrl) => ipcRenderer.invoke('app:set-icon', dataUrl),
 });

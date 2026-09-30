@@ -255,6 +255,19 @@ ipcMain.handle('app:rename', (_e, name) => {
   return n;
 });
 
+/** 软件图标 DIY（设置中心上传）：同步窗口图标与托盘 */
+ipcMain.handle('app:set-icon', (_e, dataUrl) => {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return false;
+    const img = nativeImage.createFromDataURL(dataUrl);
+    if (img.isEmpty()) return false;
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setIcon(img);
+    if (floatWin && !floatWin.isDestroyed()) floatWin.setIcon(img);
+    if (tray) tray.setImage(img);
+    return true;
+  } catch { return false; }
+});
+
 function restoreFloatPos() {
   if (!floatWin) return;
   try {

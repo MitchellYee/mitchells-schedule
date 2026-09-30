@@ -25,7 +25,19 @@ export default function TopBar() {
   const weekStartsOn = useStore((s) => s.settings.weekStartsOn);
   const appName = useStore((s) => s.settings.appName);
   const updateSettings = useStore((s) => s.updateSettings);
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const [editingName, setEditingName] = useState(false);
+  const [logoMenu, setLogoMenu] = useState(false);
+  const logoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!logoMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (logoRef.current && !logoRef.current.contains(e.target as Node)) setLogoMenu(false);
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [logoMenu]);
 
   function commitName(e: React.FocusEvent<HTMLInputElement>) {
     const v = e.currentTarget.value.trim();
@@ -35,8 +47,34 @@ export default function TopBar() {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-base px-4">
-      <div className="flex items-center gap-2">
-        <LogoMark size={28} />
+      <div className="relative flex items-center gap-2" ref={logoRef}>
+        <button
+          aria-label="打开菜单"
+          title="点击打开菜单（双击名字可改名）"
+          className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => setLogoMenu((v) => !v)}
+          onDoubleClick={() => setEditingName(true)}
+        >
+          <LogoMark size={28} />
+        </button>
+        {logoMenu && (
+          <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-line bg-raised p-1 shadow-pop">
+            <button
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-tp hover:bg-[var(--hover-overlay)]"
+              onClick={() => {
+                setLogoMenu(false);
+                setSettingsOpen(true);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              设置
+            </button>
+            <div className="border-t border-line px-3 py-1.5 text-[11px] text-ts">{appName} v0.9.6</div>
+          </div>
+        )}
         {editingName ? (
           <input
             autoFocus
@@ -205,74 +243,18 @@ function ThemeBtn() {
 }
 
 function SettingsBtn() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const settings = useStore((s) => s.settings);
-  const updateSettings = useStore((s) => s.updateSettings);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener('mousedown', handler);
-    return () => window.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        className="rounded-lg border border-line p-1.5 text-ts hover:border-accent hover:text-tp"
-        onClick={() => setOpen((v) => !v)}
-        title="设置"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-line bg-raised p-3 shadow-panel">
-          <SettingRow label="密度">
-            {[
-              { v: 48, l: '紧凑' },
-              { v: 56, l: '默认' },
-              { v: 64, l: '宽松' },
-            ].map((o) => (
-              <ChoiceBtn key={o.v} active={settings.hourHeight === o.v} onClick={() => updateSettings({ hourHeight: o.v })}>{o.l}</ChoiceBtn>
-            ))}
-          </SettingRow>
-          <SettingRow label="时间格式">
-            <ChoiceBtn active={settings.use24h} onClick={() => updateSettings({ use24h: true })}>24 小时</ChoiceBtn>
-            <ChoiceBtn active={!settings.use24h} onClick={() => updateSettings({ use24h: false })}>12 小时</ChoiceBtn>
-          </SettingRow>
-          <SettingRow label="每周始于">
-            <ChoiceBtn active={settings.weekStartsOn === 1} onClick={() => updateSettings({ weekStartsOn: 1 })}>周一</ChoiceBtn>
-            <ChoiceBtn active={settings.weekStartsOn === 0} onClick={() => updateSettings({ weekStartsOn: 0 })}>周日</ChoiceBtn>
-          </SettingRow>
-          <div className="mt-1 border-t border-line pt-2 text-[11px] text-tt">数据保存在本地浏览器（IndexedDB）</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-2 py-1.5">
-      <span className="text-[12px] text-ts">{label}</span>
-      <div className="flex gap-1">{children}</div>
-    </div>
-  );
-}
-
-function ChoiceBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   return (
     <button
-      onClick={onClick}
-      className={`rounded-md px-2 py-1 text-[11px] font-medium ${active ? 'bg-accent text-[var(--accent-contrast)]' : 'bg-subtle text-ts hover:text-tp'}`}
+      className="rounded-lg border border-line p-1.5 text-ts hover:border-accent hover:text-tp"
+      onClick={() => setSettingsOpen(true)}
+      title="设置"
     >
-      {children}
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
     </button>
   );
 }
+

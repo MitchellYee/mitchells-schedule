@@ -12,6 +12,8 @@ interface ChronaDesktop {
   saveFloatPos: () => Promise<void>;
   /** 修改软件名：同步主窗口/悬浮窗标题与托盘提示（返回主进程采用的最终名字） */
   renameApp: (name: string) => Promise<string>;
+  /** 修改软件图标：dataURL 同步到窗口图标与托盘（Web 版无此桥） */
+  setIcon: (dataUrl: string) => Promise<boolean>;
 }
 
 declare global {

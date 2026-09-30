@@ -108,6 +108,8 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export interface Settings {
   /** 软件名（DIY）：顶栏双击可改，同步到状态栏/标签页/窗口标题/托盘 */
   appName: string;
+  /** 自定义图标（DIY）：256px PNG dataURL；空 = 用默认 avatar.png */
+  appIcon?: string;
   /** 每小时像素高度：48 紧凑 / 56 默认 / 64 宽松 */
   hourHeight: number;
   use24h: boolean;

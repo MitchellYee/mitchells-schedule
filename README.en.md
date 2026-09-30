@@ -33,7 +33,7 @@
 ### Desktop experience (Electron)
 - Standalone desktop window; closing it collapses into a **floating ball** (hover to expand today's agenda, click to bring back the main window); draggable across the whole screen, stops the instant you release
 - System tray; `Ctrl+wheel` zooms the time grid; dark/light themes
-- **DIY app name (xxx's Schedule)**: double-click the title in the top bar and put your own name on it — synced to the top bar, status bar, window title, and tray tooltip
+- **Settings center (click the top-left icon)**: DIY the app name **and** icon — your name, your avatar; plus theme, 24/12-hour clock, week start, and time-grid density (double-click the title to rename quickly)
 
 ### Built for LLM scheduling
 - Built-in REST API (desktop: `http://127.0.0.1:5175`), full docs in [app/API.md](./app/API.md)

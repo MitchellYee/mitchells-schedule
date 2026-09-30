@@ -81,6 +81,7 @@ interface Store {
   taskPanelCollapsed: boolean;
   paletteOpen: boolean;
   helpOpen: boolean;
+  settingsOpen: boolean;
 
   settings: Settings;
   toasts: Toast[];
@@ -126,6 +127,7 @@ interface Store {
   toggleTaskPanel: () => void;
   setPaletteOpen: (open: boolean) => void;
   setHelpOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
   updateSettings: (patch: Partial<Settings>) => void;
 
   pushToast: (message: string, undo?: { label: string; fn: () => Promise<void> }) => void;
@@ -163,6 +165,7 @@ export const useStore = create<Store>()((set, get) => ({
   taskPanelCollapsed: false,
   paletteOpen: false,
   helpOpen: false,
+  settingsOpen: false,
 
   settings: loadSettings(),
   toasts: [],
@@ -450,6 +453,9 @@ export const useStore = create<Store>()((set, get) => ({
   },
   setHelpOpen(open) {
     set({ helpOpen: open });
+  },
+  setSettingsOpen(open) {
+    set({ settingsOpen: open });
   },
 
   updateSettings(patch) {

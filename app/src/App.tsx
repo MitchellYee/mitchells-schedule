@@ -14,6 +14,7 @@ import QuickCreatePopover from './components/editor/QuickCreatePopover';
 import TaskQuickCreate from './components/editor/TaskQuickCreate';
 import CommandPalette from './components/CommandPalette';
 import ShortcutsHelp from './components/ShortcutsHelp';
+import SettingsDialog from './components/SettingsDialog';
 import Toasts from './components/Toasts';
 import { LogoMark } from './components/Logo';
 import { snapMinutes, weekDays } from './domain/time';
@@ -36,6 +37,12 @@ export default function App() {
     document.title = appName;
     void window.chronaDesktop?.renameApp?.(appName);
   }, [appName]);
+
+  // 自定义图标（DIY）：桌面版启动/更改时同步窗口图标与托盘
+  const appIcon = useStore((s) => s.settings.appIcon);
+  useEffect(() => {
+    if (appIcon) void window.chronaDesktop?.setIcon?.(appIcon);
+  }, [appIcon]);
 
   // 轮询同步：CLI / LLM / 手改 db.json 的变更自动反映到界面
   useEffect(() => {
@@ -279,6 +286,7 @@ export default function App() {
       <TaskQuickCreate />
       <CommandPalette />
       <ShortcutsHelp />
+      <SettingsDialog />
       <Toasts />
 
       {!loaded && (
