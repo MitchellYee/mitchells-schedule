@@ -1,4 +1,6 @@
-# Mitchell's Schedule
+# Build a Schedule by Yourself: Your Schedule
+
+**Your calendar deserves your name.** The app's name is a template: **xxx's Schedule** — it ships as *Mitchell's Schedule*; double-click the title in the top-left corner and it instantly becomes *David's Schedule*, *Yuki's Schedule* … yours.
 
 **A local-first, keyboard-first personal calendar**: events + a three-layer task system (Tasks > Todos > Events) + recurring schedules + an LLM scheduling API, with China timezone (UTC+8) built in.
 
@@ -31,7 +33,7 @@
 ### Desktop experience (Electron)
 - Standalone desktop window; closing it collapses into a **floating ball** (hover to expand today's agenda, click to bring back the main window); draggable across the whole screen, stops the instant you release
 - System tray; `Ctrl+wheel` zooms the time grid; dark/light themes
-- **DIY app name**: double-click the app name in the top bar to rename it — synced to the top bar, status bar, window title, and tray tooltip
+- **DIY app name (xxx's Schedule)**: double-click the title in the top bar and put your own name on it — synced to the top bar, status bar, window title, and tray tooltip
 
 ### Built for LLM scheduling
 - Built-in REST API (desktop: `http://127.0.0.1:5175`), full docs in [app/API.md](./app/API.md)
