@@ -1,0 +1,111 @@
+/* ============ 时叙 Chrona 设计 tokens（设计方案 §7.2） ============ */
+
+:root {
+  --bg-base: #ffffff;
+  --bg-subtle: #f7f7f8;
+  --bg-raised: #ffffff;
+  --border-subtle: #eaeaec;
+  --border-strong: #d8d8dc;
+  --text-primary: rgba(26, 26, 30, 0.9);
+  --text-secondary: rgba(26, 26, 30, 0.6);
+  --text-tertiary: rgba(26, 26, 30, 0.38);
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.12);
+  --accent-contrast: #ffffff;
+  --today-tint: rgba(79, 70, 229, 0.07);
+  --status-deferred: #b45309;
+  --danger: #dc2626;
+  --now-line: #ea4335;
+  --hover-overlay: rgba(26, 26, 30, 0.04);
+  --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  /* 日历 11 色板（浅色主题：bg / fg / bar） */
+  --cal-tomato-bg: #fad2cf; --cal-tomato-fg: #a50e0e; --cal-tomato-bar: #d93025;
+  --cal-flamingo-bg: #ffe3e0; --cal-flamingo-fg: #c5221f; --cal-flamingo-bar: #f28b82;
+  --cal-tangerine-bg: #ffe0c7; --cal-tangerine-fg: #b25f00; --cal-tangerine-bar: #e8710a;
+  --cal-banana-bg: #fdeba5; --cal-banana-fg: #8a6100; --cal-banana-bar: #f29900;
+  --cal-sage-bg: #ceead6; --cal-sage-fg: #1e7b34; --cal-sage-bar: #34a853;
+  --cal-basil-bg: #d4f0dc; --cal-basil-fg: #116734; --cal-basil-bar: #188038;
+  --cal-peacock-bg: #c9e7f8; --cal-peacock-fg: #0b57d0; --cal-peacock-bar: #1a73e8;
+  --cal-blueberry-bg: #d9e7ff; --cal-blueberry-fg: #1a4fa0; --cal-blueberry-bar: #4285f4;
+  --cal-lavender-bg: #e6dcff; --cal-lavender-fg: #6c3fc5; --cal-lavender-bar: #8462e0;
+  --cal-grape-bg: #f0d9ff; --cal-grape-fg: #8e24aa; --cal-grape-bar: #a142f4;
+  --cal-graphite-bg: #e4e4e7; --cal-graphite-fg: #5f5f68; --cal-graphite-bar: #80868b;
+}
+
+.dark {
+  --bg-base: #131315;
+  --bg-subtle: #1b1b1e;
+  --bg-raised: #232326;
+  --border-subtle: #2a2a2e;
+  --border-strong: #3a3a40;
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
+  --accent: #818cf8;
+  --accent-soft: rgba(129, 140, 248, 0.16);
+  --accent-contrast: #101013;
+  --today-tint: rgba(129, 140, 248, 0.14);
+  --status-deferred: #f5c26b;
+  --danger: #f87171;
+  --now-line: #f28b82;
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+
+  --cal-tomato-bg: #42201e; --cal-tomato-fg: #f2b8b5; --cal-tomato-bar: #e67c73;
+  --cal-flamingo-bg: #462120; --cal-flamingo-fg: #ffb4ab; --cal-flamingo-bar: #f28b82;
+  --cal-tangerine-bg: #452a12; --cal-tangerine-fg: #ffc59b; --cal-tangerine-bar: #fa903e;
+  --cal-banana-bg: #463a0f; --cal-banana-fg: #f5d74a; --cal-banana-bar: #f2c744;
+  --cal-sage-bg: #1e3626; --cal-sage-fg: #a8dbb6; --cal-sage-bar: #5bb974;
+  --cal-basil-bg: #16301d; --cal-basil-fg: #a5e5b8; --cal-basil-bar: #4cbb6f;
+  --cal-peacock-bg: #1b3550; --cal-peacock-fg: #a8cff3; --cal-peacock-bar: #6ba7e8;
+  --cal-blueberry-bg: #232f52; --cal-blueberry-fg: #b9ccf5; --cal-blueberry-bar: #7892e8;
+  --cal-lavender-bg: #302650; --cal-lavender-fg: #d4c2f9; --cal-lavender-bar: #9f87ee;
+  --cal-grape-bg: #3c2452; --cal-grape-fg: #e3c6f7; --cal-grape-bar: #b983f7;
+  --cal-graphite-bg: #2b2b30; --cal-graphite-fg: #c6c6cc; --cal-graphite-bar: #9aa0a6;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 流式月视图：无滚动条（纯动态渲染体验） */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
