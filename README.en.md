@@ -94,6 +94,45 @@ curl http://127.0.0.1:5175/api/tasks -d '{"title":"Weekly report","dueDate":"202
 
 Field reference, status-machine semantics, and the recurrence format: **[app/API.md](./app/API.md)**.
 
+## Skill & scheduled task: let an LLM plan your day
+
+The repo ships **schedule-skill** ([`skill/`](./skill/SKILL.md)) — an operation manual written for LLM agents: connection probing, the three-layer model, five-state semantics, the RRULE format, a scheduling workflow, and safety rules (**manual invocation only** — it never auto-triggers when you merely chat about calendars).
+
+### Install (ZCode)
+
+Copy the `skill/` folder into ZCode's skills directory:
+
+```bash
+cp -r skill/ ~/.zcode/skills/schedule-skill      # global (all projects)
+# or per-project: cp -r skill/ .agents/skills/schedule-skill
+```
+
+Then invoke `@schedule-skill` in a conversation and the agent can drive the app directly.
+
+### Sample automation: generate today's schedule at 9:00 every day
+
+Create a scheduled task in ZCode with the following configuration (these rules run daily in production):
+
+- **Name**: Generate today's schedule
+- **Trigger**: cron `0 9 * * *` (every day at 9:00)
+- **Prompt**:
+
+```text
+@schedule-skill
+这是一个定时任务，每天早上九点执行。若超过 14 点执行，默认生成第二天的日程安排。
+使用 skill，检查已有的日程和存在的任务情况，为当天生成一个完整的日程：
+1、若是法定工作日：
+   1.1 工作时间为 10:00–22:00，其中 12:00–14:00 和 18:00–20:00 是休息时间，直接空出即可，不需要新增日程；
+   1.2 若已有存在的日程，需要跳过该时段来生成；
+   1.3 若存在跨天的长期任务，根据任务情况、难度、截止日期，生成合理的当天日程与当天小 DDL 分段——临近截止的任务占大部分时间，其余任务生成小节点；
+   1.4 生成日程和小任务节点时评估难度，保持合理；
+   1.5 前一天存在未完成的小任务节点：当日重新评估并生成新的，并把昨日未完成的节点设为「延期」状态。
+2、若是周末：工作时间为 10:00–20:00，休息时间（12:00–14:00、18:00–20:00）建成【个人】日历的「休息时间」日程，任务安排参考第 1 点；
+3、若是法定节假日：不生成任何日程。
+```
+
+> The prompt is in Chinese and used verbatim in production (agents handle it fine). Prerequisite: the app is running (desktop API at `127.0.0.1:5175`). For public holidays the agent can verify the State Council's annual notice online.
+
 ## Project layout
 
 ```
@@ -105,6 +144,7 @@ Field reference, status-machine semantics, and the recurrence format: **[app/API
 │   ├── cli.mjs           # Zero-dependency CLI
 │   ├── API.md            # Full REST API docs
 │   └── data/             # Local data (git-ignored)
+├── skill/                # schedule-skill: LLM agent manual (cron / on-demand invocation)
 ├── 设计方案.md            # Design document (Chinese, with iteration log)
 ├── 调研报告/              # Pre-build research notes (Chinese)
 ├── README.md / README.en.md
