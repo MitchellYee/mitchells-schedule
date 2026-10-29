@@ -34,6 +34,10 @@ jobs:
         working-directory: app
         run: npm ci
 
+      - name: Download Electron runtime
+        working-directory: app
+        run: node node_modules/electron/install.js
+
       - name: Build portable desktop package
         working-directory: app
         run: npm run package:desktop
