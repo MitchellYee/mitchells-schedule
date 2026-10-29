@@ -49,7 +49,7 @@ Development requires Node.js ≥ 22.12. The Windows portable build runs without 
 
 ## Download
 
-Windows users can download the latest portable build from the [Releases page](https://github.com/MitchellYee/mitchells-working-tool/releases/latest). The installer is distributed as a versioned ZIP archive; it does not include personal calendar data. Release binaries stay out of Git history so the source repository remains easy to clone.
+Windows users can download the latest portable build from the [Releases page](https://github.com/MitchellYee/mitchells-schedule/releases/latest). The installer is distributed as a versioned ZIP archive; it does not include personal calendar data. Release binaries stay out of Git history so the source repository remains easy to clone.
 
 ```bash
 # Web (dev mode)
@@ -188,3 +188,4 @@ React 18 · TypeScript · Vite · Tailwind CSS · Zustand · dayjs · Electron �
 ## License
 
 [MIT](./LICENSE) © 2026 MitchellYee
+
