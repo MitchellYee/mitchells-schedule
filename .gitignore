@@ -2,6 +2,10 @@
 node_modules/
 app/node_modules/
 app/dist/
+app/releases/
+app/.qa/
+/Mitchells-Working-Tool-v*.zip
+/Mitchells-Working-Tool-v*.zip.sha256
 
 # 本地个人数据（日程/悬浮球位置）——绝不入库
 app/data/

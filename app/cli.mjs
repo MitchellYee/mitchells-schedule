@@ -18,7 +18,23 @@
  * 环境变量 CHRONA_URL 可覆盖服务地址（默认 http://localhost:5173）
  */
 
+import { readFileSync } from 'node:fs';
+
 const BASE = process.env.CHRONA_URL || 'http://localhost:5173';
+
+function taskDetails(opt) {
+  const body = {};
+  if (opt.color !== undefined) usage('任务颜色已改为 --importance important|normal|unimportant');
+  if (opt.importance !== undefined) {
+    if (!['important', 'normal', 'unimportant'].includes(opt.importance)) usage('--importance 仅支持 important|normal|unimportant');
+    body.importance = opt.importance;
+  }
+  if (opt.description !== undefined) body.description = opt.description;
+  if (opt['description-file'] !== undefined) body.description = readFileSync(String(opt['description-file']), 'utf8');
+  if (opt.subtasks !== undefined) body.subtasks = JSON.parse(String(opt.subtasks));
+  if (opt['subtasks-file'] !== undefined) body.subtasks = JSON.parse(readFileSync(String(opt['subtasks-file']), 'utf8'));
+  return body;
+}
 
 async function api(path, init) {
   const res = await fetch(BASE + path, {
@@ -208,21 +224,33 @@ async function main() {
 
     case 'task-list': {
       const tasks = await api('/api/tasks');
+      if (opt.json) { console.log(JSON.stringify(tasks, null, 2)); return; }
       const STATUS = { upcoming: '◌未', ongoing: '◈执', deferred: '⏱延', done: '✓', 'done-late': '✗迟' };
+      const IMPORTANCE = { important: '重要', normal: '一般', unimportant: '不重要' };
       for (const t of tasks) {
         const flag = STATUS[t.status] || '□';
         const range = t.startDate && t.startDate !== t.dueDate ? ` [任务 ${t.startDate}~${t.dueDate}]` : t.dueDate ? ` [截止 ${t.dueDate}]` : '';
         const parent = t.parentId ? ` ↳${(tasks.find((x) => x.id === t.parentId) || {}).title || t.parentId.slice(0, 6)}` : '';
-        console.log(`${flag} [${t.id}] ${t.title}${range}${parent}`);
+        const steps = t.subtasks || [];
+        console.log(`${flag} [${t.id}] ${t.title}${range}${parent} · ${IMPORTANCE[t.importance] || '一般'}${steps.length ? ` · 子任务 ${steps.filter((s) => s.done).length}/${steps.length}` : ''}`);
       }
       if (!tasks.length) console.log('（没有任务/待办）');
+      return;
+    }
+
+    case 'task-get': {
+      if (!pos[0]) usage('task-get 缺少 id');
+      const tasks = await api('/api/tasks');
+      const task = tasks.find((t) => t.id === pos[0]);
+      if (!task) usage('未找到该任务');
+      console.log(JSON.stringify(task, null, 2));
       return;
     }
 
     case 'task-add': {
       const title = pos[0];
       if (!title) usage('task-add 缺少标题');
-      const body = { title };
+      const body = { title, ...taskDetails(opt) };
       if (opt.due) body.dueDate = opt.due;
       if (opt.from) {
         body.startDate = opt.from;
@@ -230,7 +258,6 @@ async function main() {
       }
       if (opt.parent) body.parent = opt.parent; // id 或任务名，附属为子待办
       if (opt.status) body.status = opt.status;
-      if (opt.color) body.color = opt.color;
       const t = await api('/api/tasks', { method: 'POST', body: JSON.stringify(body) });
       const range = t.startDate && t.startDate !== t.dueDate ? `（${t.startDate}~${t.dueDate} 任务）` : '（待办）';
       console.log(`✓ 已创建 [${t.id}] ${t.title} ${range}${t.parentId ? ' · 已附属' : ''}`);
@@ -240,7 +267,7 @@ async function main() {
     case 'task-set': {
       const id = pos[0];
       if (!id) usage('task-set 缺少 id');
-      const body = {};
+      const body = taskDetails(opt);
       if (opt.status) {
         if (!['todo', 'upcoming', 'ongoing', 'done', 'done-late', 'deferred'].includes(opt.status)) usage('--status 仅支持 upcoming|ongoing|deferred|done|done-late（未完成三态由日期自动推导，通常只设 done/done-late）');
         if (opt.status === 'todo') delete opt.status;
@@ -250,8 +277,7 @@ async function main() {
       if (opt.from) body.startDate = opt.from;
       if (opt.parent !== undefined) body.parent = opt.parent === 'none' ? '' : opt.parent;
       if (opt.title) body.title = opt.title;
-      if (opt.color !== undefined) body.color = opt.color === 'none' ? undefined : opt.color;
-      if (!Object.keys(body).length) usage('task-set 需要 --status/--due/--from/--parent/--title 之一');
+      if (!Object.keys(body).length) usage('task-set 需要 --importance/--description/--subtasks/--status/--due/--from/--parent/--title 之一');
       const t = await api(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
       console.log(`✓ [${t.id}] ${t.title} → ${t.status}${t.startDate ? ` ${t.startDate}~${t.dueDate}` : t.dueDate ? ` 截止 ${t.dueDate}` : ''}`);
       return;
@@ -295,8 +321,13 @@ function usage(err) {
                      [--repeat daily|weekly|monthly] [--every N] [--days mo,we,su] [--until YYYY-MM-DD]
   node cli.mjs update <id> [--title ...] [--date ...] [--at ...] [--for ...] [--move 1d|-2d|1w] [--calendar ...]
   node cli.mjs delete <id>
-  node cli.mjs task-list | task-add "标题" [--due YYYY-MM-DD] [--from YYYY-MM-DD（有=跨天任务）] [--parent 任务id或名]
-  node cli.mjs task-set <id> --status done|done-late [--due ...] [--from ...] [--parent ...|none] [--title ...] | task-done <id>
+  node cli.mjs task-list [--json] | task-get <id>
+  node cli.mjs task-add "标题" [--due YYYY-MM-DD] [--from YYYY-MM-DD] [--parent 任务id或名]
+                    [--importance important|normal|unimportant] [--description "任务背景"] [--subtasks-file steps.json]
+  node cli.mjs task-set <id> [--importance ...] [--description ...|--description-file background.txt]
+                    [--subtasks '[{"id":"step-1","title":"步骤","done":false}]'|--subtasks-file steps.json]
+                    [--status done|done-late] [--due ...] [--from ...] [--parent ...|none] [--title ...]
+  node cli.mjs task-done <id>
   node cli.mjs cal-add "名" [--color peacock|banana|sage|tomato|basil|lavender|grape|...] | cal-list
 示例：
   node cli.mjs add "写周报" --at 15:00 --for 45m --calendar 工作

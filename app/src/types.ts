@@ -78,6 +78,29 @@ export function isDone(status?: TaskStatus): boolean {
   return status === 'done' || status === 'done-late';
 }
 
+export type TaskImportance = 'important' | 'normal' | 'unimportant';
+export const TASK_IMPORTANCE_OPTIONS: { value: TaskImportance; label: string; color: PaletteKey }[] = [
+  { value: 'important', label: '重要', color: 'tomato' },
+  { value: 'normal', label: '一般', color: 'banana' },
+  { value: 'unimportant', label: '不重要', color: 'sage' },
+];
+
+export function importanceOption(importance?: TaskImportance) {
+  return TASK_IMPORTANCE_OPTIONS.find((o) => o.value === importance) ?? TASK_IMPORTANCE_OPTIONS[1];
+}
+
+export function taskColorVars(task: { importance?: TaskImportance; status?: TaskStatus }) {
+  return isDone(task.status) ? { bg: 'var(--completed-bg)', fg: 'var(--completed-fg)', bar: 'var(--completed-bar)' }
+    : calColorVars(importanceOption(task.importance).color);
+}
+
+/** 长期任务的步骤清单；不自动创建带截止日期的每日待办。 */
+export interface SubtaskItem {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 /**
  * 层级模型：任务 > 待办 > 日程。
  * - 任务（跨天）：startDate~dueDate 区间，连体长条显示在「任务」带（最高层）
@@ -94,16 +117,24 @@ export interface TaskItem {
   startDate?: string;
   /** 附属任务的 id（待办 → 任务） */
   parentId?: string;
-  /** 自定义颜色（如 工作/科研/运动/个人 范围色）；缺省按状态着色 */
+  importance: TaskImportance;
+  /** 任务背景、目标与要求，支持多行文本。 */
+  description?: string;
+  subtasks: SubtaskItem[];
+  /** 旧版颜色仅保留用于数据兼容，显示由 importance 决定。 */
   color?: PaletteKey;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
 }
 
+export type TaskInput = Pick<TaskItem, 'title'> & Partial<Pick<TaskItem,
+  'dueDate' | 'startDate' | 'parentId' | 'importance' | 'description' | 'subtasks'>>;
+
 export type ViewKind = 'day' | 'week' | 'month' | 'agenda';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+export type ColorScheme = 'forest' | 'ocean' | 'sand' | 'plum';
 
 export interface Settings {
   /** 软件名（DIY）：顶栏双击可改，同步到状态栏/标签页/窗口标题/托盘 */
@@ -112,6 +143,12 @@ export interface Settings {
   appIcon?: string;
   /** 每小时像素高度：48 紧凑 / 56 默认 / 64 宽松 */
   hourHeight: number;
+  /** 自动让时间网格容纳约十小时；Ctrl+滚轮切换为手动缩放。 */
+  autoFitHours: boolean;
+  colorScheme: ColorScheme;
+  accentColor: string;
+  surface: 'neutral' | 'warm' | 'slate';
+  density: 'comfortable' | 'compact';
   use24h: boolean;
   /** 0 = 周日, 1 = 周一 */
   weekStartsOn: 0 | 1;
@@ -119,11 +156,16 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  appName: "Mitchell's Schedule",
+  appName: "Mitchell's Working Tool",
   hourHeight: 56,
+  autoFitHours: true,
+  colorScheme: 'forest',
+  accentColor: '#315e53',
+  surface: 'neutral',
+  density: 'comfortable',
   use24h: true,
   weekStartsOn: 1,
-  theme: 'system',
+  theme: 'light',
 };
 
 export interface Toast {

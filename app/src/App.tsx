@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 import dayjs from 'dayjs';
 import { nowCN, todayCN } from './time';
-import { useStore, resolveTheme } from './store/useStore';
+import { useStore } from './store/useStore';
+import { useAppearance } from './hooks/useAppearance';
+import { findTool } from './tools/registry';
+import Home from './tools/Home';
+import TranslateTool from './tools/TranslateTool';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import TaskPanel from './components/TaskPanel';
@@ -20,11 +24,13 @@ import { LogoMark } from './components/Logo';
 import { snapMinutes, weekDays } from './domain/time';
 
 export default function App() {
+  useAppearance();
+  const activeTool = useStore((s) => s.activeTool);
+  const ToolComponent = findTool(activeTool)?.component;
   const init = useStore((s) => s.init);
   const loaded = useStore((s) => s.loaded);
   const view = useStore((s) => s.view);
   const anchor = useStore((s) => s.anchor);
-  const theme = useStore((s) => s.settings.theme);
   const weekStartsOn = useStore((s) => s.settings.weekStartsOn);
   const sidebarCollapsed = useStore((s) => s.sidebarCollapsed);
   const taskPanelCollapsed = useStore((s) => s.taskPanelCollapsed);
@@ -115,19 +121,6 @@ export default function App() {
     };
   }, []);
 
-  // 主题：跟随系统或手动，切换 <html> 上的 dark 类
-  useEffect(() => {
-    const apply = () => {
-      document.documentElement.classList.toggle('dark', resolveTheme(theme) === 'dark');
-    };
-    apply();
-    if (theme === 'system' && typeof matchMedia !== 'undefined') {
-      const mq = matchMedia('(prefers-color-scheme: dark)');
-      mq.addEventListener('change', apply);
-      return () => mq.removeEventListener('change', apply);
-    }
-  }, [theme]);
-
   // 全局键盘快捷键（设计方案 §6.4）
   useEffect(() => {
     function isTyping(e: KeyboardEvent): boolean {
@@ -190,7 +183,7 @@ export default function App() {
     function createAtNextSlot() {
       const s = useStore.getState();
       const now = nowCN();
-      const start = snapMinutes(Math.max(now.hour() * 60 + now.minute() + 15, 8 * 60), 15);
+      const start = Math.min(23 * 60 + 45, snapMinutes(Math.max(now.hour() * 60 + now.minute() + 15, 8 * 60), 15));
       s.openQuickCreate({
         dateKey: now.format('YYYY-MM-DD'),
         startMin: start,
@@ -219,6 +212,7 @@ export default function App() {
         return;
       }
       if (isTyping(e)) return;
+      if (s.activeTool !== 'schedule') return;
 
       if (e.ctrlKey || e.metaKey || e.altKey) {
         if (e.key.toLowerCase() === 'z') { e.preventDefault(); void s.undo(); }
@@ -269,7 +263,9 @@ export default function App() {
   return (
     <div className="flex h-full flex-col bg-base font-sans text-tp">
       <TopBar />
-      <div className="flex min-h-0 flex-1">
+      {activeTool === 'home' && <main className="min-h-0 flex-1 overflow-auto"><Home /></main>}
+      <main className="min-h-0 flex-1 overflow-auto" style={{display:activeTool==='translate'?'block':'none'}}><TranslateTool active={activeTool==='translate'}/></main>
+      {activeTool === 'schedule' ? <div className="flex min-h-0 flex-1">
         {!sidebarCollapsed && <Sidebar />}
         <main className="min-w-0 flex-1">
           {view === 'day' && <TimeGrid days={weekDays(anchorDay, 1, weekStartsOn)} />}
@@ -278,7 +274,7 @@ export default function App() {
           {view === 'agenda' && <AgendaView />}
         </main>
         {!taskPanelCollapsed && <TaskPanel />}
-      </div>
+      </div> : ToolComponent ? <main className="min-h-0 flex-1 overflow-auto"><ToolComponent /></main> : null}
       <StatusBar />
 
       <EventDrawer />
@@ -289,7 +285,7 @@ export default function App() {
       <SettingsDialog />
       <Toasts />
 
-      {!loaded && (
+      {!loaded && activeTool==='schedule' && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-base">
           <div className="flex items-center gap-3">
             <LogoMark size={32} />

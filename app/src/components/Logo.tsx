@@ -3,7 +3,7 @@
  * 设置中心 DIY 的自定义图标（settings.appIcon dataURL）优先。
  */
 import { useStore } from '../store/useStore';
-import defaultAvatar from '../assets/avatar.png';
+import defaultAvatar from '../assets/toolbox.png';
 
 export function LogoMark({ size = 28, shape = 'squircle' }: { size?: number; shape?: 'squircle' | 'circle' }) {
   const custom = useStore((s) => s.settings.appIcon);
@@ -18,7 +18,7 @@ export function LogoMark({ size = 28, shape = 'squircle' }: { size?: number; sha
       style={{
         width: size,
         height: size,
-        objectFit: 'cover',
+        objectFit: shape === 'circle' ? 'cover' : 'contain',
         borderRadius: shape === 'circle' ? '50%' : Math.round(size * 0.23),
         display: 'block',
       }}

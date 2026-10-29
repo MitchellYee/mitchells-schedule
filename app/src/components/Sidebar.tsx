@@ -14,13 +14,14 @@ export default function Sidebar() {
   const weekStartsOn = useStore((s) => s.settings.weekStartsOn);
 
   return (
-    <aside className="flex w-[260px] shrink-0 flex-col overflow-y-auto border-r border-line bg-subtle">
+    <aside className="calendar-sidebar flex shrink-0 flex-col overflow-y-auto border-r border-line bg-subtle">
       <MiniMonth anchor={anchor} weekStartsOn={weekStartsOn} onPick={(key) => { setAnchor(key); setView('day'); }} />
       <div className="mx-3 mb-2 h-px bg-line" />
       <CalendarList />
       <div className="mt-auto p-3 text-[11px] leading-5 text-tt">
         提示：单击 / 拖拽空白格新建事件<br />
         按住 Alt 拖拽可 1 分钟微调<br />
+        滚轮上下滚动，Ctrl + 滚轮缩放<br />
         按 <Kbd>?</Kbd> 查看全部快捷键
       </div>
     </aside>

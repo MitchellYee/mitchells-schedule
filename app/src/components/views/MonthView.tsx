@@ -18,12 +18,13 @@ function barsForWeek(
   const taskBars: TaskBarRow[] = [];
   const todoBars: TaskBarRow[] = [];
   for (const t of tasks) {
-    if (t.status === 'done' || t.status === 'done-late') continue;
     const from = t.startDate || t.dueDate;
     if (!from || !t.dueDate) continue;
     if (!t.startDate && (t.dueDate < ws || t.dueDate > week[6].format('YYYY-MM-DD'))) continue; // 待办仅本周
     // 任务渲染全部（BandBar 按区间∩本周自算分段），拖拽跨周/翻页组件保持挂载
-    taskBars.push({ task: t as TaskBarRow['task'], colStart: 0, span: 1, cutStart: false, cutEnd: false, range: '' });
+    const bar = { task: t as TaskBarRow['task'], colStart: 0, span: 1, cutStart: false, cutEnd: false, range: '' };
+    if (t.startDate) taskBars.push(bar);
+    else todoBars.push({ ...bar, colStart: dayjs(t.dueDate).diff(week[0], 'day') });
   }
   taskBars.sort((a, b) => (a.task.startDate! < b.task.startDate! ? -1 : 1));
   todoBars.sort((a, b) => ((a.task.dueDate || '') < (b.task.dueDate || '') ? -1 : 1));
@@ -227,8 +228,8 @@ export default function MonthView() {
             >
               {/* 任务条带 */}
               <div
-                className="grid shrink-0 content-start gap-x-0.5 gap-y-0.5 px-0.5 pt-0.5"
-                style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridAutoRows: 'minmax(18px, auto)' }}
+                className="band-scroll month-band grid shrink-0 content-start gap-x-1 gap-y-1 px-1 pt-1"
+                style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridAutoRows: 'minmax(var(--band-height), auto)' }}
               >
                 {taskBars.map((b) => (
                   <BandBar
@@ -244,8 +245,8 @@ export default function MonthView() {
               </div>
               {/* 待办条带 */}
               <div
-                className="grid shrink-0 content-start gap-x-0.5 gap-y-0.5 px-0.5 pt-0.5"
-                style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridAutoRows: 'minmax(18px, auto)' }}
+                className="band-scroll month-band grid shrink-0 content-start gap-x-1 gap-y-1 px-1 pt-1"
+                style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridAutoRows: 'minmax(var(--band-height), auto)' }}
               >
                 {renderBandBars(todoBars, {
                   onToggle: (t) => void toggleTask(t.id),

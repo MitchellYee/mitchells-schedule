@@ -14,6 +14,7 @@ interface ChronaDesktop {
   renameApp: (name: string) => Promise<string>;
   /** 修改软件图标：dataURL 同步到窗口图标与托盘（Web 版无此桥） */
   setIcon: (dataUrl: string) => Promise<boolean>;
+  saveTranslationKey: (provider: string, key: string) => Promise<{configured:boolean}>;
 }
 
 declare global {

@@ -4,5 +4,5 @@ import { chronaApiPlugin } from './server/api-plugin';
 
 export default defineConfig({
   plugins: [react(), chronaApiPlugin()],
-  server: { port: 5173 },
+  server: { port: 5173, watch: { ignored: ['**/.qa/**', '**/data/**', '**/releases/**'] } },
 });

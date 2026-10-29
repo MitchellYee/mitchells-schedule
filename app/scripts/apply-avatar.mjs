@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = process.argv[2] || path.join(root, 'assets', 'avatar.png');
+const source = process.argv[2] || path.join(root, 'assets', 'mitchell-mark-source.png');
 
 // 统一处理：中心方裁 + 512px，作为 canonical 头像
 const base = await sharp(source).resize(512, 512, { fit: 'cover', position: 'centre' }).png().toBuffer();
@@ -26,6 +26,7 @@ for (const [file, size] of [
 // 界面 Logo 与 favicon
 await mkdir(path.join(root, 'src', 'assets'), { recursive: true });
 await copyFile(path.join(root, 'assets', 'avatar.png'), path.join(root, 'src', 'assets', 'avatar.png'));
+await copyFile(path.join(root, 'assets', 'avatar.png'), path.join(root, 'src', 'assets', 'toolbox.png'));
 await copyFile(path.join(root, 'assets', 'avatar.png'), path.join(root, 'public', 'icon.png'));
 console.log('✓ src/assets/avatar.png + public/icon.png');
 

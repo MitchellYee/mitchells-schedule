@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const svg = await readFile(path.join(root, 'assets', 'icon.svg'));
+const svg = await readFile(path.join(root, 'assets', 'mitchell-mark-source.png'));
 
 const targets = [
   ['assets/icon-512.png', 512],

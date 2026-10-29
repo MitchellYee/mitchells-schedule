@@ -1,6 +1,7 @@
 /* ============ 时叙 Chrona 设计 tokens（设计方案 §7.2） ============ */
 
 :root {
+  color-scheme: light;
   --bg-base: #ffffff;
   --bg-subtle: #f7f7f8;
   --bg-raised: #ffffff;
@@ -35,6 +36,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --bg-base: #131315;
   --bg-subtle: #1b1b1e;
   --bg-raised: #232326;
@@ -79,13 +81,13 @@ body {
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 5px;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-track {
@@ -108,4 +110,53 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Working Tool: quiet surfaces, consistent information density, semantic completion. */
+:root {
+  --bg-base: #ffffff; --bg-subtle: #f7f8fa; --bg-raised: #ffffff;
+  --border-subtle: #e9ecf1; --border-strong: #d3d9e3;
+  --text-primary: #252c3b; --text-secondary: #647084; --text-tertiary: #8590a2;
+  --completed-bg: #eef0f3; --completed-fg: #596273; --completed-bar: #a0a8b5;
+  --band-height: 27px;
+  --shadow-pop: 0 3px 12px rgba(28,39,64,.08);
+  --shadow-panel: 0 16px 60px -12px rgba(28,39,64,.18);
+}
+.dark {
+  --bg-base: #171b24; --bg-subtle: #12161e; --bg-raised: #202633;
+  --border-subtle: #2a3140; --border-strong: #3b4557;
+  --text-primary: #e3e8f1; --text-secondary: #a3adc0; --text-tertiary: #818da4;
+  --completed-bg: #2c313b; --completed-fg: #b8bfcc; --completed-bar: #747e91;
+}
+:root[data-surface="warm"] { --bg-base: #fffdf8; --bg-subtle: #f5f2eb; --bg-raised: #fffefb; --border-subtle: #eae5db; }
+:root[data-surface="slate"] { --bg-base: #f9fbff; --bg-subtle: #eef2f8; --bg-raised: #ffffff; --border-subtle: #e0e7f0; }
+.dark[data-surface="warm"] { --bg-base: #211f1c; --bg-subtle: #191815; --bg-raised: #2b2823; --border-subtle: #38342e; }
+.dark[data-surface="slate"] { --bg-base: #161d2a; --bg-subtle: #101722; --bg-raised: #202b3c; --border-subtle: #2e3b50; }
+.calendar-sidebar { width: 216px; }
+.task-panel { width: 278px; }
+.band-scroll { max-height: 112px; overflow-y: auto; overscroll-behavior: contain; flex-shrink: 0; }
+.month-band { max-height: 100px; }
+[data-testid="time-scroll"] { overflow-anchor: none; }
+.task-band { min-height: var(--band-height); transition: opacity .15s, background-color .15s; }
+.completed-item { opacity: .62; filter: grayscale(1); }
+.completed-item:hover, .completed-item:focus-within { opacity: .85; }
+html[data-density="compact"] { --band-height: 22px; }
+html[data-density="compact"] .task-card { padding-top: 6px; padding-bottom: 6px; }
+html[data-density="compact"] .task-band { font-size: 11px; }
+button, input, select, textarea { outline-offset: 3px; }
+button:focus-visible { outline: 2px solid var(--accent); }
+input[type="color"] { padding: 0; border: 0; }
+@media (max-width: 1180px) { .calendar-sidebar { width: 182px; } .task-panel { width: 248px; } }
+@media (max-width: 900px) {
+  .calendar-sidebar, .task-panel { display: none !important; }
+  .brand-toolbar { padding-inline: 12px; gap: 8px; }
+  .brand-actions > button:first-child { padding-inline: 8px; }
+  .brand-actions > button:first-child kbd { display: none; }
+  .calendar-toolbar { padding-inline: 12px; gap: 6px; }
+}
+@media (max-width: 600px) {
+  .brand-actions > button:first-child, .brand-actions > button:last-child { display: none; }
+  .calendar-toolbar { flex-wrap: wrap; height: auto; min-height: 76px; padding-block: 6px; }
+  .calendar-toolbar > div:nth-child(3) { flex-basis: calc(100% - 174px); }
+  .calendar-toolbar > button:first-child, .calendar-toolbar > button[aria-label="切换任务面板"] { display: none; }
 }

@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import dayjs from 'dayjs';
 import { todayCN } from '../../time';
 import { useStore } from '../../store/useStore';
-import { calColorVars, isDone } from '../../types';
+import { calColorVars, isDone, taskColorVars } from '../../types';
+import ImportanceBadge from '../ImportanceBadge';
 import { expandOccurrences, ruleToText } from '../../domain/recurrence';
 
 /** 议程视图：按日期分组的时序列表（设计方案 §5.5），任务在当日置顶 */
@@ -41,12 +42,12 @@ export default function AgendaView() {
       }
     }
     for (const t of tasks) {
-      if (isDone(t.status)) continue;
       const from = t.startDate || t.dueDate;
-      if (!from || !t.dueDate || from < start.format('YYYY-MM-DD')) continue;
+      if (!from || !t.dueDate || t.dueDate < start.format('YYYY-MM-DD') || from >= start.add(30, 'day').format('YYYY-MM-DD')) continue;
       // 跨天任务显示在起始日，并标注区间
-      if (!byDay.has(from)) byDay.set(from, []);
-      byDay.get(from)!.push({ kind: 'task', task: t });
+      const key = from < start.format('YYYY-MM-DD') ? start.format('YYYY-MM-DD') : from;
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key)!.push({ kind: 'task', task: t });
     }
     return Array.from(byDay.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -82,25 +83,29 @@ export default function AgendaView() {
             {/* 任务/待办置顶 */}
             {dayTasks.map((t) => {
               const deferred = t.task.status === 'deferred';
-              const tone = deferred ? 'var(--status-deferred)' : 'var(--accent)';
+              const color = taskColorVars(t.task);
               const done = isDone(t.task.status);
               return (
-                <button
+                <div
                   key={t.task.id}
-                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-[var(--hover-overlay)]"
-                  style={{ color: done ? 'var(--cal-sage-bar)' : tone }}
-                  onClick={() => void toggleTask(t.task.id)}
+                  data-task-id={t.task.id}
+                  data-completed={done}
+                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-[var(--hover-overlay)] ${done ? 'completed-item' : ''}`}
+                  style={{ color: color.fg }}
                 >
-                  <span className="h-3 w-3 shrink-0 rounded-[3px] border-2 border-current" />
-                  <span className={`font-semibold ${done ? 'line-through opacity-70' : ''}`}>{t.task.title}</span>
+                  <button title="切换完成状态" aria-label={`${done ? '恢复' : '完成'}${t.task.title}`} aria-pressed={done} onClick={() => void toggleTask(t.task.id)}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border text-[10px]" style={{ borderColor: color.bar }}>{done ? '✓' : ''}</button>
+                  <button title="编辑任务详情" onClick={() => useStore.getState().openEditTask(t.task.id)}
+                    className={`min-w-0 truncate text-left font-semibold hover:underline ${done ? 'line-through opacity-70' : ''}`}>{t.task.title}</button>
+                  {!done && <ImportanceBadge importance={t.task.importance} />}
                   <span className="text-[11px] opacity-70">
                     {t.task.startDate && t.task.startDate !== t.task.dueDate
                       ? `任务 ${dayjs(t.task.startDate).format('M月D日')} ~ ${dayjs(t.task.dueDate).format('M月D日')}`
                       : `待办 · 截止 ${d.format('M月D日')}`}
-                    {deferred ? ' · 已延期' : key < todayKey ? ' · 已逾期' : ''}
-                    {done ? ' · 已完成' : ' · 点击切换状态'}
+                    {!done && (deferred ? ' · 已延期' : key < todayKey ? ' · 已逾期' : '')}
+                    {done ? ' · 已完成' : ''}
                   </span>
-                </button>
+                </div>
               );
             })}
 

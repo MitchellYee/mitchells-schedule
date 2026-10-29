@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useStore } from '../store/useStore';
+import { APP_VERSION } from '../version';
 
 /** 底部状态栏：下一场安排常驻（设计方案 §4.1，Cron 模式） */
 export default function StatusBar() {
@@ -10,6 +11,7 @@ export default function StatusBar() {
   const setView = useStore((s) => s.setView);
   const appName = useStore((s) => s.settings.appName);
   const use24h = useStore((s) => s.settings.use24h);
+  const activeTool = useStore((s) => s.activeTool);
 
   const next = useMemo(() => {
     const visible = new Set(calendars.filter((c) => c.isVisible).map((c) => c.id));
@@ -34,7 +36,7 @@ export default function StatusBar() {
     info = (
       <button
         className="text-accent hover:underline"
-        onClick={() => { setAnchor(dayjs(next.start).format('YYYY-MM-DD')); setView('day'); }}
+        onClick={() => { useStore.getState().setActiveTool('schedule'); setAnchor(dayjs(next.start).format('YYYY-MM-DD')); setView('day'); }}
       >
         {ongoing
           ? `进行中 · ${next.title}（${dayjs(next.start).format(use24h ? 'HH:mm' : 'h:mm A')} 开始）`
@@ -45,9 +47,9 @@ export default function StatusBar() {
 
   return (
     <footer className="flex h-7 shrink-0 items-center justify-between border-t border-line bg-subtle px-4 text-[11px] text-ts">
-      <div>{info}</div>
+      <div>{activeTool==='schedule'?info:activeTool==='translate'?'翻译文本仅保留于当前会话':'个人工作空间'}</div>
       <div className="flex items-center gap-3">
-        <span>{appName} v0.9.6</span>
+        <span>{appName} v{APP_VERSION}</span>
         <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--cal-sage-bar)]" />本地数据 · 已就绪</span>
       </div>
     </footer>

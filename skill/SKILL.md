@@ -1,13 +1,13 @@
 ---
 name: schedule-skill
-description: "[仅手动调用] 只在用户 @schedule-skill、输入 /schedule-skill 或明确点名要求使用本 skill 时才加载：通过 REST API 操作 xxx's Schedule 日程软件（日程/重复事件、任务与待办五态、附属关系、日历、每日排程）。专为指导定时任务与按需调用而设计——日常对话即使涉及日程/日历/待办/DDL 话题，也不要自动触发本 skill。"
+description: "[仅手动调用] 只在用户 @schedule-skill、输入 /schedule-skill 或明确点名要求使用本 skill 时才加载：通过 REST API 操作 Mitchell's Working Tool 日程模块（日程/重复事件、任务与待办五态、附属关系、日历、每日排程）。专为指导定时任务与按需调用而设计——日常对话即使涉及日程/日历/待办/DDL 话题，也不要自动触发本 skill。"
 ---
 
-# Schedule's Skill —— xxx's Schedule 操作
+# Schedule's Skill —— Mitchell's Working Tool 日程操作
 
 > 本 skill 仅手动调用（@ / /schedule-skill / 定时任务中点名加载），不会随日程话题自动触发。
 
-通过 HTTP 操作用户本机的日程软件（xxx's Schedule——软件名是用户自定义的，出厂默认 Mitchell's Schedule，接口与名字无关）。所有写操作立即落盘，并在 ≤5 秒内自动同步到打开的界面——写完无需用户手动刷新。
+通过 HTTP 操作用户本机的 Mitchell's Working Tool 日程模块（软件名可自定义，接口与名字无关）。所有写操作立即落盘，并在 ≤5 秒内自动同步到打开的界面——写完无需用户手动刷新。
 
 ## 1. 连接
 
@@ -37,6 +37,8 @@ curl -s --max-time 2 http://127.0.0.1:5175/api/data > /dev/null && BASE=http://1
 - `calendar` 字段用**名字**引用（如 `"工作"`），日历不存在会自动创建。
 - 事件只给 `start` 时默认时长 1 小时；`durationMinutes`（分钟）覆盖。
 - 旧布尔 `done:true/false` 仍兼容（映射为完成/推导态），但推荐直接传 `status`。
+- v0.10.0：`importance` 为 important（重要/红）/ normal（一般/黄）/ unimportant（不重要/绿）；新建附属待办省略时继承任务级别，独立项默认 normal。任务旧 `color` 不再控制显示。
+- `description` 是用户填写的任务背景；`subtasks` 是步骤清单 `{id,title,done}`，按原顺序保存，与当天执行的待办不同。辅助排程要读取描述、优先级和未完成步骤；不要把完成步骤再次安排。
 - 每次写操作后 GET 验证结果，再向用户汇报。
 
 ## 4. 日程（事件）
@@ -83,14 +85,17 @@ curl -X POST $BASE/api/tasks -H "Content-Type: application/json" \
 # 五态调整（upcoming/ongoing/deferred 由日期自动推导，手动设 done/done-late）；延期常配合改期（改期后状态自动重算）
 curl -X PATCH $BASE/api/tasks/<id> -H "Content-Type: application/json" \
   -d '{"status": "deferred", "dueDate": "2026-10-08"}'
-# 解除附属：{"parent": ""}   改颜色：{"color": "basil"}
+# 解除附属：{"parent": ""}   改重要程度：{"importance": "important"}
+# 修改背景：{"description": "任务背景与要求"}
+# 修改清单：{"subtasks": [{"id":"步骤原id","title":"步骤内容","done":true}]}
+# subtasks 为整份替换：先 GET 最新任务，保留未修改条目及稳定 id；传 [] 清空。
 ```
 
-CLI 等价（在仓库 `app` 目录下）：`node cli.mjs task-add "标题" --due 2026-10-03 [--from 2026-10-01（有=任务）] [--parent 任务名] [--color basil]`；`node cli.mjs task-set <id> --status done-late [--due 新日期] [--parent ...|none]`。
+CLI 等价（在仓库 `app` 目录下）：`node cli.mjs task-add "标题" --due 2026-10-03 [--from 2026-10-01（有=任务）] [--parent 任务名] [--importance important] [--description "背景"] [--subtasks-file steps.json]`；`task-list --json` / `task-get <id>` 读取完整详情；`task-set <id> --importance normal [--description-file background.txt] [--subtasks-file steps.json]` 修改。
 
 ## 6. 排程工作流（"帮我把任务排一下 / 规划今天"）
 
-1. `GET /api/tasks` 找进行中项（未完成三态 `upcoming`/`ongoing`/`deferred`）；附属待办（有 `parentId`）归并到对应任务下统一考虑；
+1. `GET /api/tasks` 找覆盖当天的未完成项（`upcoming`/`ongoing`/`deferred`）；结合重要程度、截止日、描述和未完成子任务估计工作，附属待办（有 `parentId`）归并到对应任务下统一考虑；
 2. `GET /api/events?from=<今天>&to=<今天>` 看已占用时段——返回的重复事件只有规则本身，需按 `rrule` 推算当天是否发生；
 3. 为定时段落 `POST /api/events`；偏好（早晚、时长）拿不准先问一次再批量排；
 4. 纯待办用 `POST /api/tasks` 定 DDL；跨天的大块工作建成**任务**（startDate+dueDate），其下细项建成附属待办（parent）；

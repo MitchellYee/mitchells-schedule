@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import dayjs from 'dayjs';
 import { todayCN } from '../time';
-import type { Calendar, EventItem, PaletteKey, Settings, TaskItem, ThemeMode, Toast, ViewKind } from '../types';
+import { normalizeSettings } from '../domain/appearance';
+import { findTool } from '../tools/registry';
+import type { Calendar, EventItem, PaletteKey, Settings, TaskInput, TaskItem, ThemeMode, Toast, ViewKind } from '../types';
 import { DEFAULT_SETTINGS, uid, isDone, deriveTaskStatus } from '../types';
 import { loadAll, putCalendar, putEvent, putTask, deleteEvent as apiDeleteEvent, deleteTask as apiDeleteTask, fetchRemote } from '../db/repository';
 
@@ -15,6 +17,7 @@ export interface QuickCreateState {
 
 /** 任务快速创建（跨日拖选 / + 菜单 / Shift+C / 双击任务带或待办带唤起） */
 export interface TaskQuickState {
+  title?: string;
   /** task = 任务（带 startDate，显示在任务带）；todo = 待办（DDL，显示在待办带） */
   mode: 'task' | 'todo';
   startDate: string;
@@ -42,7 +45,7 @@ const SETTINGS_KEY = 'chrona-settings';
 function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) return normalizeSettings(JSON.parse(raw));
   } catch {
     /* ignore */
   }
@@ -58,6 +61,8 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 }
 
 interface Store {
+  activeTool: string;
+  setActiveTool: (id: string) => void;
   loaded: boolean;
   view: ViewKind;
   anchor: string; // YYYY-MM-DD
@@ -103,7 +108,7 @@ interface Store {
   setCalendarColor: (id: string, color: PaletteKey) => Promise<void>;
   addCalendar: (name: string, color: PaletteKey) => Promise<void>;
 
-  createTask: (title: string, dueDate?: string, startDate?: string, parentId?: string, color?: import('../types').PaletteKey) => Promise<void>;
+  createTask: (data: TaskInput) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   setTaskStatus: (id: string, status: TaskItem['status']) => Promise<void>;
   updateTask: (id: string, patch: Partial<TaskItem>) => Promise<void>;
@@ -146,6 +151,10 @@ function stampWrite(): void {
 }
 
 export const useStore = create<Store>()((set, get) => ({
+  activeTool: 'home',
+  setActiveTool(id) {
+    if (findTool(id)?.status === 'ready') set({ activeTool: id, drawerOpen:false, quickCreate:null, taskQuick:null, editTaskId:null, selectedEventId:null });
+  },
   loaded: false,
   view: 'week',
   anchor: todayCN(),
@@ -229,7 +238,7 @@ export const useStore = create<Store>()((set, get) => ({
       get().pushToast(`已创建「${ev.title}」`, {
         label: '撤销新建',
         fn: async () => {
-          await putEvent({ ...ev, deletedAt: Date.now(), updatedAt: Date.now() });
+          await apiDeleteEvent(ev.id);
           set((s) => ({ events: s.events.filter((x) => x.id !== ev.id) }));
         },
       });
@@ -307,9 +316,12 @@ export const useStore = create<Store>()((set, get) => ({
     set((s) => ({ calendars: [...s.calendars, next] }));
   },
 
-  async createTask(title, dueDate, startDate, parentId, color) {
+  async createTask(data) {
     const now = Date.now();
-    const task: TaskItem = { id: uid(), title, status: deriveTaskStatus({ startDate, dueDate }, todayCN()), dueDate, startDate, parentId, color, createdAt: now, updatedAt: now };
+    const parent = data.parentId ? get().tasks.find((t) => t.id === data.parentId) : undefined;
+    const task: TaskItem = { ...data, title: data.title.trim(), id: uid(),
+      importance: data.importance ?? parent?.importance ?? 'normal', subtasks: data.subtasks ?? [],
+      status: deriveTaskStatus(data, todayCN()), createdAt: now, updatedAt: now };
     stampWrite();
     await putTask(task);
     set((s) => ({ tasks: [...s.tasks, task] }));
@@ -323,7 +335,7 @@ export const useStore = create<Store>()((set, get) => ({
     let nextStatus: TaskItem['status'];
     if (isDone(task.status)) {
       nextStatus = deriveTaskStatus(task, todayKey);
-    } else if (todayKey > (task.dueDate ?? '') || task.status === 'deferred') {
+    } else if ((task.dueDate && todayKey > task.dueDate) || task.status === 'deferred') {
       nextStatus = 'done-late';
     } else {
       nextStatus = 'done';
@@ -334,7 +346,7 @@ export const useStore = create<Store>()((set, get) => ({
   async setTaskStatus(id, status) {
     const task = get().tasks.find((t) => t.id === id);
     if (!task) return;
-    const next = { ...task, status, updatedAt: Date.now() };
+    const next = { ...task, status: isDone(status) ? status : deriveTaskStatus(task, todayCN()), updatedAt: Date.now() };
     stampWrite();
     await putTask(next);
     set((s) => ({ tasks: upsert(s.tasks, next) }));
@@ -459,7 +471,7 @@ export const useStore = create<Store>()((set, get) => ({
   },
 
   updateSettings(patch) {
-    const settings = { ...get().settings, ...patch };
+    const settings = normalizeSettings({ ...get().settings, ...patch });
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     set({ settings });
   },

@@ -1,68 +1,90 @@
-# Build a Schedule by Yourself: Your Schedule
+# Mitchell's Working Tool
 
-**你的日程表，就该叫你的名字。** 软件名是一张模板：**xxx's Schedule** —— 它出厂叫 *Mitchell's Schedule*，双击软件左上角的名字，立刻变成 *David's Schedule*、*小林's Schedule*……你的那一份。
+**Mitchell's Working Tool — a personal toolbox.** A shared home screen opens Calendar and Chinese–English Translation, with a reserved LaTeX module. Four coordinated palettes, light/dark modes and density settings keep the tools consistent.
 
-**本地优先、键盘优先的个人日程软件**：事件日历 + 三层任务体系（任务 > 待办 > 日程）+ 重复日程 + LLM 排程接口，内置中国时区（UTC+8）。
+**v0.13.0:** new workspace and translation page, streaming translation of up to 30,000 characters, four curated palettes, the supplied M icon and a circular floating orb. Existing calendar interactions and API/CLI remain compatible. See [design and research notes](./工作台与翻译设计.md).
 
-[English](./README.en.md)
+**A local-first, keyboard-first personal calendar**: events + a three-layer task system (Tasks > Todos > Events) + recurring schedules + an LLM scheduling API, with China timezone (UTC+8) built in.
 
-> 核心理念：数据完全存在你自己的电脑上（一个明文 JSON 文件），不依赖任何云服务；同时提供 REST API 和命令行，让 LLM / 脚本可以替你排程。
+[简体中文](./README.zh-CN.md)
 
-## 功能特性
+> Calendar data stays in a local JSON file, accessible through the REST API and CLI. Translation sends text to the selected service only when requested. Google needs no key; LLM providers use the provider key you configure and receive a built-in translation prompt plus your context.
 
-### 视图与导航
-- **四种视图**：日 / 周 / 月 / 议程，「今天」整列高亮，红色时间线实时跟随当前时刻
-- **流式月视图**：像信息流一样上下滚动逐周加载，平滑衔接前后月份，无滚动条
-- **顶部栏自动跟随**：月视图滚动时，顶栏动态显示当前视口大部分区域所在的「xxxx年xx月」
-- **键盘优先**：`Ctrl+K` 命令面板、`T` 回到今天、`1/2/3/4` 切视图、`P/N` 前后翻页、`Shift+C` 新建待办、`?` 全部快捷键
+## Features
 
-### 三层任务模型（任务 > 待办 > 日程）
-- **任务**：跨天工作包，在周/月视图最上方显示为连体长条，高于一切日历事件
-- **待办**：单日 DDL（当天截止），可附属到某个任务，右栏按任务/待办分组
-- **日程**：普通日历事件，支持四种日历（工作/科研/运动/个人，可自定义颜色）与 RRULE 重复规则（每天/每 x 天/每周几/每月，支持截止日）
+### Views & Navigation
+- **Four views**: Day / Week / Month / Agenda; the "today" column is fully highlighted and a red now-line tracks the current time
+- **Streaming month view**: scroll like a feed — weeks render row by row, seamlessly connecting adjacent months, no scrollbar
+- **Adaptive header**: while scrolling the month view, the top bar shows the year/month that dominates the viewport
+- **Keyboard-first**: `Ctrl+K` command palette, `T` today, `1/2/3/4` switch views, `P/N` prev/next, `Shift+C` new todo, `?` all shortcuts
 
-### 五态自动状态机
-`未开始 → 进行中 → 延期`（按日期自动推导）+ `完成 / 延期完成`（手动标记）。每天自动刷新：超 DDL 自动转「延期」，拖回覆盖今天自动恢复「进行中」。
+### Three-layer task model (Task > Todo > Event)
+- **v0.10.0 task details**: importance (important/red, normal/yellow, unimportant/green), multiline descriptions, and ordered subtask checklists with completion tracking. Creation and editing share one form; press Ctrl+Enter to save. Full details are available through the API and CLI for daily planning.
+- **Task**: a multi-day work package, rendered as one connected bar pinned above the calendar in Week/Month views — always above calendar events
+- **Todo**: a single-day DDL item; can be attached to a Task; grouped in the side panel
+- **Event**: regular calendar items with four calendars (Work/Research/Exercise/Personal, custom colors) and RRULE recurrence (daily / every N days / weekdays / monthly, with UNTIL)
 
-### 拖拽交互
-- 划选创建日程（15 分钟吸附，Alt 微调到 1 分钟）；双击带区直接创建任务/待办
-- **长条边缘拖拽改期**：抓住任务条左右边缘即可调整起止日期
-- **跨周/跨月拖拽**：拖到视口边缘停留约 0.6 秒自动翻页，跨周任务全程不脱手
-- 月视图跨周拖选批量创建跨天任务
+### Five-state automatic status machine
+`Upcoming → Ongoing → Deferred` (derived from dates automatically) plus `Done / Done late` (manual). Refreshed daily: past-DDL items flip to Deferred automatically; drag one back over today and it becomes Ongoing again.
 
-### 桌面体验（Electron）
-- 独立桌面窗口；关闭窗口收缩为**悬浮球**（悬停展开当天行程，单击唤回主界面），球可全屏拖动、脱手即停
-- 系统托盘常驻；`Ctrl+滚轮` 缩放时间格；明暗主题
-- **设置中心（点击左上角图标）**：DIY 软件名与图标——把它变成 *你的名字 + 你的头像*；另有明暗主题、24/12 小时制、周起始、时间格密度（双击顶栏名字可快捷改名）
+### Drag & drop
+- Drag to create events (15-min snapping, Alt for 1-min precision); double-click a band to create tasks/todos
+- **Edge-resize multi-day bars**: grab either end of a task bar to change its start/end date
+- **Cross-week/month dragging**: hover at the viewport edge for ~0.6s to auto-flip pages — never let go
+- Cross-week drag-select in Month view to create multi-day tasks in bulk
 
-### 为 LLM 排程而生
-- 内置 REST API（桌面版 `http://127.0.0.1:5175`），完整文档见 [app/API.md](./app/API.md)
-- 零依赖命令行 `app/cli.mjs`：增删改查日程/任务、设状态/附属/颜色
-- 所有「今天/现在」一律按**中国时区 UTC+8** 计算，与运行设备的系统时区无关（海外机器也能正确排程中国时区的日程）
+### Desktop experience (Electron)
+- Standalone desktop window; closing it collapses into a **floating ball** (hover to expand today's agenda, click to bring back the main window); draggable across the whole screen, stops the instant you release
+- System tray; `Ctrl+wheel` zooms the time grid; dark/light themes
+- **Settings center (top-right gear)**: customize the name and icon; choose one of four palettes, light/dark mode, 24/12-hour clock, week start and density. The top-left logo returns home.
 
-## 快速开始
+### Built for LLM scheduling
+- Built-in REST API (desktop: `http://127.0.0.1:5175`), full docs in [app/API.md](./app/API.md)
+- Zero-dependency CLI `app/cli.mjs`: CRUD for events/tasks, status/attachment/color
+- All "today/now" logic is computed in **China time (UTC+8)** regardless of the device's system timezone — correct scheduling even on overseas machines
 
-要求：Node.js ≥ 18。
+## Getting started
+
+Development requires Node.js ≥ 22.12. The Windows portable build runs without a separate Node.js installation.
+
+## Download
+
+Windows users can download the latest portable build from the [Releases page](https://github.com/MitchellYee/mitchells-working-tool/releases/latest). The installer is distributed as a versioned ZIP archive; it does not include personal calendar data. Release binaries stay out of Git history so the source repository remains easy to clone.
 
 ```bash
-# Web 版（开发模式）
+# Web (dev mode)
 cd app
 npm install
-npm run dev          # 打开 http://localhost:5173
+npm run dev          # open http://localhost:5173
 
-# 桌面版（Electron，自动构建）
-npm run desktop      # 首次会先 build；之后可用 desktop:only 跳过构建秒开
+# Desktop (Electron, builds first)
+npm run desktop      # use `npm run desktop:only` afterwards to skip the build
 ```
 
-首次启动会自动在 `app/data/db.json` 创建数据文件并预置「工作 / 科研 / 运动 / 个人」四个日历。
+On first launch the app creates `app/data/db.json` and seeds four calendars (Work / Research / Exercise / Personal).
 
-### 桌面快捷方式（Windows）
+## Translation providers
 
-快捷方式目标指向 `app\node_modules\electron\dist\electron.exe`（参数 `desktop/main.mjs`，起始位置 `app` 目录），双击即开、无黑窗。用 PowerShell 创建：
+The Translation tool supports the Google web-compatible route plus official MiniMax, GLM and DeepSeek Chat Completions adapters. It also accepts any OpenAI-compatible custom endpoint. Choose a provider in **Translation settings**, then select a model and one of the built-in contexts (general, business, academic or casual) or provide your own.
+
+For a desktop build, provider keys can be saved with the operating system's encrypted storage. For a development server, configure them as environment variables before starting the app:
+
+```powershell
+$env:MINIMAX_API_KEY = "..."
+$env:GLM_API_KEY = "..."
+$env:DEEPSEEK_API_KEY = "..."
+$env:CUSTOM_LLM_API_KEY = "..."
+```
+
+Keys are never returned by `/api/translation/config`, written to browser `localStorage`, or included in application logs. The translation request carries a fixed translation prompt, the selected context and the source text marked as data, so instructions inside the source are not treated as control messages.
+
+### Desktop shortcut (Windows)
+
+Point a shortcut at `app\node_modules\electron\dist\electron.exe` (arguments `desktop/main.mjs`, working directory `app`) for a one-click, no-console launch. Create it with PowerShell:
 
 ```powershell
 $ws = New-Object -ComObject WScript.Shell
-$lnk = $ws.CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\Mitchell's Schedule.lnk")
+$lnk = $ws.CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\Mitchell's Working Tool.lnk")
 $lnk.TargetPath = "D:\path\to\app\node_modules\electron\dist\electron.exe"
 $lnk.Arguments  = "desktop\main.mjs"
 $lnk.WorkingDirectory = "D:\path\to\app"
@@ -70,52 +92,52 @@ $lnk.IconLocation = "D:\path\to\app\assets\icon.ico"
 $lnk.Save()
 ```
 
-## 数据与隐私
+## Data & privacy
 
-- 所有数据存储在 **`app/data/db.json`**（明文 JSON），可直接备份/手改，界面 ≤5 秒自动同步外部修改
-- **`app/data/` 已被 `.gitignore` 排除，任何日程数据都不会进入 git 仓库**
-- 无云、无账号、无遥测
+- Everything is stored in **`app/data/db.json`** (plain JSON) — back it up or edit it by hand; the UI picks up external changes within ~5 seconds
+- **`app/data/` is git-ignored; no schedule data ever enters the repository**
+- No cloud. No account. No telemetry.
 
-## 外部接口示例
+## External API examples
 
 ```bash
-# 列出任务
+# List tasks
 node app/cli.mjs task-list
 
-# 新建事件（今天 15:00 开始，1 小时）
-node app/cli.mjs event-add "团队例会" --at 15:00 --for 1h --calendar 工作
+# New event today at 15:00 for 1 hour
+node app/cli.mjs event-add "Team sync" --at 15:00 --for 1h --calendar 工作
 
-# 新建任务：标题 @截止日，可附属/设色
-node app/cli.mjs task-set "完成重构" --due 2026-10-08 --from 2026-10-01 --color basil
+# New task with a due date / attachment / color
+node app/cli.mjs task-add "Finish refactor" --due 2026-10-08 --from 2026-10-01 --importance important --description "Background and delivery requirements"
 
-# 或直接调 REST API
-curl http://127.0.0.1:5175/api/tasks -d '{"title":"写周报","dueDate":"2026-10-09"}' -H "Content-Type: application/json"
+# Or hit the REST API directly
+curl http://127.0.0.1:5175/api/tasks -d '{"title":"Weekly report","dueDate":"2026-10-09"}' -H "Content-Type: application/json"
 ```
 
-完整字段说明、状态机语义、重复规则格式见 **[app/API.md](./app/API.md)**。
+Field reference, status-machine semantics, and the recurrence format: **[app/API.md](./app/API.md)**.
 
-## Skill 与定时任务：让 LLM 每天自动排程
+## Skill & scheduled task: let an LLM plan your day
 
-仓库自带 **schedule-skill**（[`skill/`](./skill/SKILL.md) 目录）——一份写给 LLM Agent 的操作手册：连接探测、三层模型、五态语义、RRULE 格式、排程工作流与安全纪律（**仅手动调用**，不会在日常聊日程时被误触发）。
+The repo ships **schedule-skill** ([`skill/`](./skill/SKILL.md)) — an operation manual written for LLM agents: connection probing, the three-layer model, five-state semantics, the RRULE format, a scheduling workflow, and safety rules (**manual invocation only** — it never auto-triggers when you merely chat about calendars).
 
-### 安装（ZCode）
+### Install (ZCode)
 
-把 `skill/` 文件夹复制到 ZCode 的 skills 目录：
+Copy the `skill/` folder into ZCode's skills directory:
 
 ```bash
-cp -r skill/ ~/.zcode/skills/schedule-skill      # 全局（所有项目可用）
-# 或项目级：cp -r skill/ .agents/skills/schedule-skill
+cp -r skill/ ~/.zcode/skills/schedule-skill      # global (all projects)
+# or per-project: cp -r skill/ .agents/skills/schedule-skill
 ```
 
-之后在对话中 `@schedule-skill` 唤起，Agent 即可按手册直接操作软件。
+Then invoke `@schedule-skill` in a conversation and the agent can drive the app directly.
 
-### 定时任务样例：每天早上 9:00 自动生成当天日程
+### Sample automation: generate today's schedule at 9:00 every day
 
-在 ZCode 的「自动化 / 定时任务」中新建，配置如下（这是一套在生产环境每天运行的真实规则）：
+Create a scheduled task in ZCode with the following configuration (these rules run daily in production):
 
-- **名称**：当天日程的生成
-- **触发**：cron `0 9 * * *`（每天 9:00）
-- **提示词**：
+- **Name**: Generate today's schedule
+- **Trigger**: cron `0 9 * * *` (every day at 9:00)
+- **Prompt**:
 
 ```text
 @schedule-skill
@@ -131,37 +153,37 @@ cp -r skill/ ~/.zcode/skills/schedule-skill      # 全局（所有项目可用�
 3、若是法定节假日：不生成任何日程。
 ```
 
-> 前提：软件在运行（桌面版内置 API `127.0.0.1:5175`）。节假日判断可让 Agent 联网核实国务院当年通知。
+> The prompt is in Chinese and used verbatim in production (agents handle it fine). Prerequisite: the app is running (desktop API at `127.0.0.1:5175`). For public holidays the agent can verify the State Council's annual notice online.
 
-## 目录结构
+## Project layout
 
 ```
-├── app/                  # 应用主体
-│   ├── src/              # React + TypeScript 前端（视图/拖拽引擎/状态机/时区模块）
-│   ├── server/           # REST API（纯 Node，dev 与桌面版共用）
-│   ├── desktop/          # Electron 主进程 + preload
-│   ├── scripts/          # 辅助脚本（图标生成等）
-│   ├── cli.mjs           # 零依赖命令行工具
-│   ├── API.md            # REST API 完整文档
-│   └── data/             # 本地数据（gitignore，不入库）
-├── skill/                # schedule-skill：LLM Agent 操作手册（定时任务/按需调用）
-├── 设计方案.md            # 完整设计文档（含迭代记录）
-├── 调研报告/              # 前期调研（商业产品/开源项目/UIUX 模式）
-├── README.md / README.en.md
+├── app/                  # Application
+│   ├── src/              # React + TypeScript front end (views / drag engine / state machine / timezone)
+│   ├── server/           # REST API (plain Node, shared by dev & desktop)
+│   ├── desktop/          # Electron main process + preload
+│   ├── scripts/          # Helper scripts (icon generation, etc.)
+│   ├── cli.mjs           # Zero-dependency CLI
+│   ├── API.md            # Full REST API docs
+│   └── data/             # Local data (git-ignored)
+├── skill/                # schedule-skill: LLM agent manual (cron / on-demand invocation)
+├── 设计方案.md            # Design document (Chinese, with iteration log)
+├── 调研报告/              # Pre-build research notes (Chinese)
+├── README.md / README.zh-CN.md
 └── LICENSE
 ```
 
-## 技术栈
+## Tech stack
 
-React 18 · TypeScript · Vite · Tailwind CSS · Zustand · dayjs · Electron · 纯 Node REST API（无框架）
+React 18 · TypeScript · Vite · Tailwind CSS · Zustand · dayjs · Electron · plain-Node REST API (no framework)
 
-## 路线图
+## Roadmap
 
-- [ ] 重复事件编辑三分支（仅此条/本系列/全部）
-- [ ] 系统通知提醒
-- [ ] 自然语言创建（「明天下午3点开会30分钟」）
-- [ ] .ics 导入导出 / 订阅
-- [ ] 农历 / 节假日调休
+- [ ] Three-branch editing for recurring events (this one / this series / all)
+- [ ] System notification reminders
+- [ ] Natural-language creation ("meeting tomorrow 3pm for 30 minutes")
+- [ ] .ics import/export & subscriptions
+- [ ] Lunar calendar / public holidays
 
 ## License
 

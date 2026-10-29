@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { DEFAULT_SETTINGS, type ThemeMode } from '../types';
 import { LogoMark } from './Logo';
+import { COLOR_SCHEMES } from '../domain/appearance';
 
 /** 设置中心：DIY 软件名与图标 + 全局偏好（顶栏左上角图标菜单进入） */
 export default function SettingsDialog() {
@@ -17,10 +18,17 @@ export default function SettingsDialog() {
     if (open) setName(settings.appName);
   }, [open, settings.appName]);
 
+  useEffect(() => {
+    if (!open) return;
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [open, setOpen]);
+
   if (!open) return null;
 
   function saveName() {
-    const v = name.trim().slice(0, 30);
+    const v = name.trim().slice(0, 40);
     if (v && v !== settings.appName) updateSettings({ appName: v });
   }
 
@@ -56,10 +64,10 @@ export default function SettingsDialog() {
   return (
     <>
       <div className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onPointerDown={() => setOpen(false)} />
-      <div className="fixed left-1/2 top-[12%] z-[61] max-h-[80vh] w-[460px] max-w-[92vw] overflow-y-auto rounded-2xl border border-line bg-raised p-6 shadow-panel">
+      <div role="dialog" aria-modal="true" aria-label="设置" className="fixed left-1/2 top-1/2 z-[61] max-h-[88vh] w-[520px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-raised p-6 shadow-panel">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[16px] font-bold text-tp">设置</h2>
-          <button className="rounded-md p-1.5 text-ts hover:bg-[var(--hover-overlay)]" onClick={() => setOpen(false)}>
+          <button aria-label="关闭设置" className="rounded-md p-1.5 text-ts hover:bg-[var(--hover-overlay)]" onClick={() => setOpen(false)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
         </div>
@@ -73,7 +81,7 @@ export default function SettingsDialog() {
               <div className="flex gap-2">
                 <input
                   value={name}
-                  maxLength={30}
+                  maxLength={40}
                   onChange={(e) => setName(e.currentTarget.value)}
                   onBlur={saveName}
                   onKeyDown={(e) => {
@@ -129,6 +137,24 @@ export default function SettingsDialog() {
             />
           </SettingRow>
 
+          <div>
+            <div className="mb-2 text-[13px] text-tp">空间配色</div>
+            <div className="grid grid-cols-2 gap-2">
+              {COLOR_SCHEMES.map(p => <button key={p.id} aria-label={`配色：${p.name}`} aria-pressed={settings.colorScheme === p.id}
+                onClick={() => updateSettings({ colorScheme:p.id })} className="palette-choice">
+                <span className="flex gap-1.5">{p.swatches.map(c=><i key={c} className="h-4 w-4 rounded-full border border-black/5" style={{background:c}} />)}</span>
+                <span className="mt-2 block text-[13px] font-semibold">{p.name} {settings.colorScheme===p.id?'✓':''}</span>
+                <span className="block text-[11px] text-ts">{p.description}</span>
+              </button>)}
+            </div>
+            <p className="mt-2 text-[11px] text-ts">四套完整配色同步应用于所有工具和悬浮窗。</p>
+          </div>
+
+          <SettingRow label="卡片密度">
+            <Segmented value={settings.density} options={[[ 'comfortable', '舒适' ], [ 'compact', '紧凑' ]]}
+              onChange={(v) => updateSettings({ density: v as typeof settings.density })} />
+          </SettingRow>
+
           <SettingRow label="时间制">
             <Segmented
               value={settings.use24h ? '24' : '12'}
@@ -145,13 +171,18 @@ export default function SettingsDialog() {
             />
           </SettingRow>
 
-          <SettingRow label="时间格密度">
+          <SettingRow label="时间视野">
             <Segmented
-              value={String(settings.hourHeight)}
-              options={[['48', '紧凑'], ['56', '标准'], ['64', '宽松']]}
-              onChange={(v) => updateSettings({ hourHeight: Number(v) })}
+              value={settings.autoFitHours ? 'auto' : 'manual'}
+              options={[[ 'auto', '约 10 小时' ], [ 'manual', '手动缩放' ]]}
+              onChange={(v) => updateSettings({ autoFitHours: v === 'auto' })}
             />
           </SettingRow>
+          {!settings.autoFitHours && <label className="flex items-center gap-3 text-[11px] text-ts">每小时高度
+            <input aria-label="每小时高度" className="min-w-0 flex-1 accent-[var(--accent)]" type="range" min="24" max="176" step="2" value={settings.hourHeight} onChange={(e) => updateSettings({ hourHeight: Number(e.target.value) })} />{Math.round(settings.hourHeight)}px
+          </label>}
+          <p className="text-[11px] leading-5 text-tt">初次打开定位 08:00；普通滚轮上下滚动，Ctrl + 滚轮缩放。顶栏可一键恢复 08:00–18:00。</p>
+          <button className="text-[12px] text-accent hover:underline" onClick={() => updateSettings({ theme: DEFAULT_SETTINGS.theme, colorScheme: DEFAULT_SETTINGS.colorScheme, density: DEFAULT_SETTINGS.density, autoFitHours: true })}>恢复默认外观</button>
         </div>
 
         <div className="mt-6 border-t border-line pt-3 text-[11px] text-ts">

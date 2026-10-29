@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { todayCN } from '../../time';
 import { useStore } from '../../store/useStore';
 import type { TaskItem } from '../../types';
-import { calColorVars } from '../../types';
+import { importanceOption, taskColorVars } from '../../types';
 
 /** 任务/待办条数据（外层只负责分组；分段由 BandBar 按「区间∩视口」自算） */
 export interface TaskBarRow {
@@ -14,16 +14,9 @@ export interface TaskBarRow {
   range: string;
 }
 
-export const BAND_MAX_ROWS = 3;
-
-/** 条目颜色：自定义范围色优先；否则按状态（ongoing 主题色 / upcoming 灰 / deferred 橙） */
+/** 未完成条目用重要程度色，完成后统一使用中性灰。 */
 export function bandTone(task: TaskItem): string {
-  if (task.color) return calColorVars(task.color).bar;
-  if (task.status === 'deferred') return 'var(--status-deferred)';
-  if (task.status === 'upcoming') return 'var(--text-tertiary)';
-  if (task.status === 'done-late') return 'var(--status-deferred)';
-  if (task.status === 'done') return 'var(--cal-sage-bar)';
-  return 'var(--accent)';
+  return taskColorVars(task).bar;
 }
 
 interface BandBarProps {
@@ -45,7 +38,9 @@ interface BandBarProps {
  */
 export default function BandBar({ bar, viewStartKey, colCount, onToggle, onEdit, row, compact }: BandBarProps) {
   const task = bar.task;
+  const color = taskColorVars(task);
   const tone = bandTone(task);
+  const importance = importanceOption(task.importance).label;
   const statusLabel =
     task.status === 'deferred' ? '（已延期）' : task.status === 'upcoming' ? '（未开始）' : '';
   const done = task.status === 'done' || task.status === 'done-late';
@@ -97,35 +92,41 @@ export default function BandBar({ bar, viewStartKey, colCount, onToggle, onEdit,
 
   return (
     <div
-      className={`group/bar relative flex items-stretch border text-left ${compact ? 'text-[10px]' : 'text-[11px]'} font-semibold ${
-        cutStart ? 'rounded-l-sm' : 'rounded-l-full'
-      } ${cutEnd ? 'rounded-r-sm' : 'rounded-r-full'} ${done ? 'opacity-70' : ''} ${isResizing ? 'z-30 shadow-pop' : ''}`}
+      data-task-id={task.id}
+      data-completed={done}
+      className={`task-band group/bar relative flex items-stretch border text-left ${compact ? 'text-[11px]' : 'text-[12px]'} font-medium ${
+        cutStart ? 'rounded-l-sm' : 'rounded-l-md'
+      } ${cutEnd ? 'rounded-r-sm' : 'rounded-r-md'} ${done ? 'completed-item' : ''} ${isResizing ? 'z-30 shadow-pop' : ''}`}
       style={{
         gridColumn: `${colStart + 1} / span ${span}`,
         ...(row !== undefined ? { gridRow: String(row) } : {}),
-        borderColor: tone,
-        color: tone,
-        background: 'var(--bg-base)',
+        borderColor: 'transparent',
+        borderLeft: `3px solid ${tone}`,
+        color: color.fg,
+        background: `color-mix(in srgb, ${color.bg} 68%, var(--bg-base))`,
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* 左方框：完成/撤销 */}
       <button
         className={`flex shrink-0 items-center ${compact ? 'pl-1.5 pr-0.5' : 'pl-2 pr-1'}`}
-        title="点击设为完成（超期自动记延期完成）"
+        aria-label={`${done ? '恢复' : '完成'}${task.title}`}
+        aria-pressed={done}
+        title={done ? '已完成，点击恢复' : '点击完成（超期自动记延期完成）'}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
       >
-        <span className="h-2.5 w-2.5 rounded-[3px] border border-current" />
+        <span className="flex h-3 w-3 items-center justify-center rounded-[3px] border border-current text-[9px]">{done ? '✓' : ''}</span>
       </button>
       {/* 标题区：编辑 */}
       <button
         className={`flex min-w-0 flex-1 items-center gap-1 ${compact ? 'py-[1px] pr-1.5' : 'py-[2px] pr-2'} ${done ? 'line-through decoration-current' : ''}`}
-        title={`${task.startDate ? '任务' : '待办'}：${task.title}${statusLabel}（点击编辑；边缘可拖拽改期）`}
+        title={`${task.startDate ? '任务' : '待办'}：${task.title} · ${importance}${statusLabel}${task.description ? `\n${task.description}` : ''}（点击编辑；边缘可拖拽改期）`}
         onClick={(e) => { e.stopPropagation(); onEdit(); }}
       >
         {task.status === 'deferred' && <span className="shrink-0 text-[9px] font-bold">延</span>}
         {task.status === 'upcoming' && <span className="shrink-0 text-[9px] font-bold">未</span>}
         <span className="truncate">{task.title}</span>
+        {done && <span className="shrink-0 text-[9px] no-underline">已完成</span>}
         {range && <span className="ml-auto shrink-0 text-[8px] font-medium opacity-70">{cutStart ? '←' : ''}{range}{cutEnd ? '→' : ''}</span>}
       </button>
 
@@ -143,7 +144,7 @@ export default function BandBar({ bar, viewStartKey, colCount, onToggle, onEdit,
   );
 }
 
-/** 按列分组渲染待办条（行对齐）：每列 >3 折叠为前 2 条 + 省略条 */
+/** 按列分组且保持顺序；外层限定高度并滚动，完成不会改变位置或挤走其他条目。 */
 export function renderBandBars(
   bars: TaskBarRow[],
   handlers: { onToggle: (t: TaskItem) => void; onEdit: (t: TaskItem) => void },
@@ -157,8 +158,7 @@ export function renderBandBars(
   }
   const out: React.ReactNode[] = [];
   byCol.forEach((list, col) => {
-    const shown = list.length > BAND_MAX_ROWS ? list.slice(0, BAND_MAX_ROWS - 1) : list;
-    shown.forEach((b, i) => {
+    list.forEach((b, i) => {
       out.push(
         <BandBar
           key={b.task.id + '@' + col}
@@ -171,19 +171,6 @@ export function renderBandBars(
         />
       );
     });
-    if (list.length > BAND_MAX_ROWS) {
-      const hidden = list.length - (BAND_MAX_ROWS - 1);
-      out.push(
-        <div
-          key={`more@${col}`}
-          className="flex items-center truncate rounded-full bg-subtle px-2 text-[10px] font-medium text-ts"
-          style={{ gridColumn: `${col + 1}`, gridRow: String(BAND_MAX_ROWS) }}
-          title={`还有 ${hidden} 项未显示（见右侧面板）`}
-        >
-          …还有 {hidden} 项
-        </div>
-      );
-    }
   });
   return out;
 }

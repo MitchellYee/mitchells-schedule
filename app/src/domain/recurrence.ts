@@ -145,7 +145,7 @@ export function expandOccurrences(
     }
     while (new Date(y, m, 1).getTime() <= rangeEnd) {
       const cur = new Date(y, m, date);
-      if (cur.getDate() === date) pushIf(new Date(y, m, 1).getTime());
+      if (cur.getDate() === date) pushIf(cur.getTime());
       m += spec.interval;
       y += Math.floor(m / 12);
       m %= 12;

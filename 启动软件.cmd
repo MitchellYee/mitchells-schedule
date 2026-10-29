@@ -1,8 +1,12 @@
 @echo off
 chcp 65001 > nul
-title Mitchell's Schedule
+title Mitchell's Working Tool
 cd /d "%~dp0app"
-echo 正在启动 Mitchell's Schedule ...
+if exist "releases\Mitchells-Working-Tool-0.13.0-win32-x64\Mitchells Working Tool.exe" (
+  start "" "releases\Mitchells-Working-Tool-0.13.0-win32-x64\Mitchells Working Tool.exe"
+  exit /b
+)
+echo 正在启动 Mitchell's Working Tool ...
 call npm run desktop
 if errorlevel 1 (
   echo.

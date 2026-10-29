@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { nowCN, todayCN } from '../time';
 import { useStore } from '../store/useStore';
-import { calColorVars, isDone } from '../types';
+import { useAppearance } from '../hooks/useAppearance';
+import { normalizeSettings } from '../domain/appearance';
+import { calColorVars, isDone, taskColorVars } from '../types';
 import { expandOccurrences } from '../domain/recurrence';
 import { LogoMark } from './Logo';
 
@@ -12,6 +14,7 @@ import { LogoMark } from './Logo';
  * 透明区域通过 chronaDesktop.setIgnoreMouse 穿透，不挡下面的应用。
  */
 export default function FloatWindow() {
+  useAppearance();
   const init = useStore((s) => s.init);
   const loaded = useStore((s) => s.loaded);
   const events = useStore((s) => s.events);
@@ -23,6 +26,23 @@ export default function FloatWindow() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { void init(); }, [init]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const sync = () => void useStore.getState().applyRemote();
+    const timer = setInterval(sync, 5000);
+    window.addEventListener('focus', sync);
+    return () => { clearInterval(timer); window.removeEventListener('focus', sync); };
+  }, [loaded]);
+  useEffect(() => {
+    const syncSettings = (e: StorageEvent) => {
+      if (e.key === 'chrona-settings' && e.newValue) {
+        try { useStore.setState({ settings: normalizeSettings(JSON.parse(e.newValue)) }); } catch { /* ignore malformed preferences */ }
+      }
+    };
+    window.addEventListener('storage', syncSettings);
+    return () => window.removeEventListener('storage', syncSettings);
+  }, []);
 
   // 透明背景（悬浮窗窗口本身 transparent）
   useEffect(() => {
@@ -68,9 +88,8 @@ export default function FloatWindow() {
       }
     }
     rows.sort((a, b) => a.start - b.start);
-    // 今日任务/待办：未完成类（todo/deferred）且区间覆盖今天
+    // 今日任务/待办：区间覆盖今天，完成后仍保留。
     const todos = tasks.filter((t) => {
-      if (isDone(t.status)) return false;
       const from = t.startDate || t.dueDate;
       return !!from && !!t.dueDate && from <= todayKey && t.dueDate >= todayKey;
     });
@@ -144,10 +163,12 @@ export default function FloatWindow() {
       {/* 行程卡片（hover 展开） */}
       <div
         data-float-ui
-        className="absolute bottom-4 right-4 w-[336px] origin-bottom-right overflow-hidden rounded-2xl border border-line bg-raised shadow-panel transition-all duration-200 ease-out"
+        aria-hidden={!expanded}
+        className="absolute bottom-[72px] right-3 w-[296px] origin-bottom-right overflow-hidden rounded-2xl border border-line bg-raised shadow-panel transition-all duration-200 ease-out"
         style={{
           pointerEvents: expanded ? 'auto' : 'none',
           opacity: expanded ? 1 : 0,
+          visibility: expanded ? 'visible' : 'hidden',
           transform: expanded ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(76px)',
         }}
         onMouseLeave={() => setExpanded(false)}
@@ -157,22 +178,22 @@ export default function FloatWindow() {
             <div className="text-[13px] font-bold text-tp">
               {now.format('M月D日')} {['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.day()]}
             </div>
-            <div className="text-[11px] text-tt">今天 · {today.rows.length} 项日程{today.todos.length ? ` · ${today.todos.length} 待办` : ''}</div>
+            <div className="text-[11px] text-tt">今天 · {today.rows.length} 项日程{today.todos.length ? ` · ${today.todos.length} 项任务/待办` : ''}</div>
           </div>
           <LogoMark size={26} />
         </div>
 
-        <div className="max-h-[280px] overflow-y-auto px-2 py-2">
+        <div className="max-h-[176px] overflow-y-auto px-2 py-2">
           {today.todos.map((t) => (
             <button
               key={t.id}
               onClick={() => void useStore.getState().toggleTask(t.id)}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--hover-overlay)]"
-              style={{ color: 'var(--accent)' }}
+              className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--hover-overlay)] ${isDone(t.status) ? 'completed-item' : ''}`}
+              style={{ color: taskColorVars(t).fg }}
             >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-[3px] border-2 border-current" />
-              <span className="truncate text-[12px] font-semibold">{t.title}</span>
-              <span className="ml-auto shrink-0 text-[10px] opacity-70">今日截止 · 点击完成</span>
+              <span className="flex h-3 w-3 shrink-0 items-center justify-center rounded-[3px] border border-current text-[9px]">{isDone(t.status) ? '✓' : ''}</span>
+              <span className={`truncate text-[12px] font-medium ${isDone(t.status) ? 'line-through' : ''}`}>{t.title}</span>
+              <span className="ml-auto shrink-0 text-[10px] opacity-70">{isDone(t.status) ? '已完成' : t.dueDate === todayKey ? '今日截止' : '进行中'}</span>
             </button>
           ))}
           {today.rows.map((r) => (
@@ -182,7 +203,7 @@ export default function FloatWindow() {
               className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--hover-overlay)]"
             >
               <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: r.color }} />
-              <span className="w-24 shrink-0 text-[11px] tabular-nums text-ts">
+              <span className="w-[86px] shrink-0 text-[11px] tabular-nums text-ts">
                 {r.allDay ? '全天' : `${dayjs(r.start).format(use24h ? 'HH:mm' : 'h:mm A')}–${dayjs(r.end).format(use24h ? 'HH:mm' : 'h:mm A')}`}
               </span>
               <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-tp">{r.title}</span>
@@ -209,7 +230,7 @@ export default function FloatWindow() {
       {/* 悬浮球（初始状态）：拖动移动位置，单击打开完整界面 */}
       <button
         data-float-ui
-        className="absolute bottom-4 right-4 flex h-[64px] w-[64px] cursor-grab items-center justify-center rounded-full border border-white/10 bg-[#17181F] shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform duration-200 hover:scale-105 active:cursor-grabbing"
+        className="floating-orb absolute bottom-3 right-3 flex h-12 w-12 cursor-grab items-center justify-center transition-transform duration-200 hover:scale-[1.04] active:cursor-grabbing"
         style={{ pointerEvents: 'auto', touchAction: 'none' }}
         onMouseEnter={() => setExpanded(true)}
         onPointerDown={onBallPointerDown}
@@ -222,7 +243,7 @@ export default function FloatWindow() {
         }}
         title={`${appName} —— 拖动移动，悬停看今天，单击打开`}
       >
-        <LogoMark size={44} shape="circle" />
+        <LogoMark size={48} shape="circle" />
       </button>
 
       {!loaded && (

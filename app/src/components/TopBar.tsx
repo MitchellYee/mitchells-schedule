@@ -6,6 +6,7 @@ import { periodTitle } from '../domain/time';
 import type { ViewKind } from '../types';
 import { Kbd } from './Sidebar';
 import { LogoMark } from './Logo';
+import ToolIcon from './ToolIcon';
 
 const VIEWS: { key: ViewKind; label: string }[] = [
   { key: 'day', label: '日' },
@@ -15,142 +16,32 @@ const VIEWS: { key: ViewKind; label: string }[] = [
 ];
 
 export default function TopBar() {
-  const view = useStore((s) => s.view);
-  const anchor = useStore((s) => s.anchor);
-  const setView = useStore((s) => s.setView);
-  const shiftPeriod = useStore((s) => s.shiftPeriod);
-  const goToday = useStore((s) => s.goToday);
-  const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const setHelpOpen = useStore((s) => s.setHelpOpen);
-  const weekStartsOn = useStore((s) => s.settings.weekStartsOn);
-  const appName = useStore((s) => s.settings.appName);
-  const updateSettings = useStore((s) => s.updateSettings);
-  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
-  const [editingName, setEditingName] = useState(false);
-  const [logoMenu, setLogoMenu] = useState(false);
-  const logoRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!logoMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (logoRef.current && !logoRef.current.contains(e.target as Node)) setLogoMenu(false);
-    };
-    window.addEventListener('mousedown', handler);
-    return () => window.removeEventListener('mousedown', handler);
-  }, [logoMenu]);
-
-  function commitName(e: React.FocusEvent<HTMLInputElement>) {
-    const v = e.currentTarget.value.trim();
-    if (v && v !== appName) updateSettings({ appName: v.slice(0, 30) });
-    setEditingName(false);
-  }
-
-  return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-base px-4">
-      <div className="relative flex items-center gap-2" ref={logoRef}>
-        <button
-          aria-label="打开菜单"
-          title="点击打开菜单（双击名字可改名）"
-          className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-          onClick={() => setLogoMenu((v) => !v)}
-          onDoubleClick={() => setEditingName(true)}
-        >
-          <LogoMark size={28} />
-        </button>
-        {logoMenu && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-line bg-raised p-1 shadow-pop">
-            <button
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-tp hover:bg-[var(--hover-overlay)]"
-              onClick={() => {
-                setLogoMenu(false);
-                setSettingsOpen(true);
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              设置
-            </button>
-            <div className="border-t border-line px-3 py-1.5 text-[11px] text-ts">{appName} v0.9.6</div>
-          </div>
-        )}
-        {editingName ? (
-          <input
-            autoFocus
-            defaultValue={appName}
-            maxLength={30}
-            aria-label="软件名称"
-            onBlur={commitName}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-              if (e.key === 'Escape') setEditingName(false);
-            }}
-            className="w-44 rounded-md border border-accent bg-base px-1.5 py-0.5 text-[14px] font-bold text-tp outline-none"
-          />
-        ) : (
-          <span
-            onDoubleClick={() => setEditingName(true)}
-            title="双击修改软件名称"
-            className="hidden select-none text-[14px] font-bold tracking-wide text-tp lg:inline"
-          >
-            {appName}
-          </span>
-        )}
+  const s = useStore();
+  return <header className="app-header shrink-0 border-b border-line bg-base">
+    <div className="workspace-header">
+      <button className="workspace-brand" onClick={()=>s.setActiveTool('home')} aria-label="返回工作台"><LogoMark size={36}/><span><strong>{s.settings.appName}</strong><small>PERSONAL TOOLBOX</small></span></button>
+      <nav className="workspace-nav" aria-label="工具导航">{[['home','工作台'],['schedule','日程'],['translate','翻译']].map(([id,label])=><button key={id} aria-current={s.activeTool===id?'page':undefined} onClick={()=>s.setActiveTool(id)}><ToolIcon id={id} size={17}/><span>{label}</span></button>)}</nav>
+      <div className="workspace-actions">
+        <button className="workspace-search" aria-label="搜索日程、任务和命令" onClick={()=>s.setPaletteOpen(true)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><Kbd>Ctrl K</Kbd></button>
+        <ThemeBtn/><SettingsBtn/>
       </div>
-
-      <div className="ml-2 flex items-center rounded-lg bg-subtle p-0.5">
-        {VIEWS.map((v) => (
-          <button
-            key={v.key}
-            onClick={() => setView(v.key)}
-            className={`rounded-md px-3 py-1 text-[12px] font-medium transition-colors ${
-              view === v.key ? 'bg-base text-tp shadow-pop' : 'text-ts hover:text-tp'
-            }`}
-          >
-            {v.label}
-          </button>
-        ))}
+    </div>
+    {s.activeTool === 'schedule' && <div className="calendar-toolbar flex h-[48px] items-center gap-3 whitespace-nowrap border-t border-line px-5">
+      <button aria-label="切换日历侧栏" onClick={s.toggleSidebar} title="日历侧栏 (S)" className="h-7 w-7 rounded text-ts hover:bg-subtle">☰</button>
+      <div className="flex items-center gap-1">
+        <button className="rounded-lg border border-line px-3 py-1 text-[12px] font-medium text-tp hover:bg-subtle" onClick={s.goToday}>今天</button>
+        <IconBtn label="上一周期 (P)" onClick={() => s.shiftPeriod(-1)} dir="left" />
+        <IconBtn label="下一周期 (N)" onClick={() => s.shiftPeriod(1)} dir="right" />
       </div>
-
-      <div className="ml-1 flex items-center gap-1">
-        <IconBtn label="上一周期 (P)" onClick={() => shiftPeriod(-1)} dir="left" />
-        <button
-          className="rounded-md px-2.5 py-1 text-[12px] font-medium text-ts hover:bg-[var(--hover-overlay)] hover:text-tp"
-          onClick={goToday}
-          title="回到今天 (T)"
-        >
-          今天
-        </button>
-        <IconBtn label="下一周期 (N)" onClick={() => shiftPeriod(1)} dir="right" />
+      <div className="min-w-0 flex-1 truncate text-[16px] font-semibold tracking-[-0.3px] text-tp">{periodTitle(s.view, dayjs(s.anchor), s.settings.weekStartsOn)}</div>
+      {(s.view==='week' || s.view==='day') && <button onClick={() => window.dispatchEvent(new Event('working-tool:reset-hours'))} title="恢复约十小时视野，定位 08:00；Ctrl + 滚轮可缩放" className="rounded-lg px-2 py-1 text-[11px] text-ts hover:bg-subtle">08:00–18:00 ↺</button>}
+      <div className="flex rounded-lg bg-subtle p-0.5" role="group" aria-label="日历视图">
+        {VIEWS.map((v) => <button key={v.key} aria-pressed={s.view===v.key} onClick={() => s.setView(v.key)} className={'rounded-md px-3 py-1 text-[12px] font-medium transition-colors '+(s.view===v.key?'bg-base text-accent shadow-sm':'text-ts hover:text-tp')}>{v.label}</button>)}
       </div>
-
-      <div className="ml-2 hidden min-w-0 flex-1 truncate text-center text-[14px] font-semibold text-tp md:block">
-        {periodTitle(view, dayjs(anchor), weekStartsOn)}
-      </div>
-
-      <div className="ml-auto flex items-center gap-1.5">
-        <CreateMenu />
-        <button
-          className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] text-ts hover:border-accent hover:text-tp"
-          onClick={() => setPaletteOpen(true)}
-          title="命令面板"
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" /><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          <Kbd>Ctrl K</Kbd>
-        </button>
-        <ThemeBtn />
-        <SettingsBtn />
-        <button
-          className="rounded-lg border border-line px-2 py-1.5 text-[12px] font-semibold text-ts hover:border-accent hover:text-tp"
-          onClick={() => setHelpOpen(true)}
-          title="快捷键帮助 (?)"
-        >
-          ?
-        </button>
-      </div>
-    </header>
-  );
+      <button aria-label="切换任务面板" onClick={s.toggleTaskPanel} title="任务面板 (R)" className="rounded-lg px-2 py-1 text-[12px] text-ts hover:bg-subtle">任务栏</button>
+      <CreateMenu />
+    </div>}
+  </header>;
 }
 
 function IconBtn({ onClick, dir, label }: { onClick: () => void; dir: 'left' | 'right'; label: string }) {
@@ -180,7 +71,7 @@ function CreateMenu() {
   function createEventToday() {
     setOpen(false);
     const now = nowCN();
-    const startMin = Math.max(Math.round((now.hour() * 60 + now.minute() + 15) / 15) * 15, 8 * 60);
+    const startMin = Math.min(23 * 60 + 45, Math.max(Math.round((now.hour() * 60 + now.minute() + 15) / 15) * 15, 8 * 60));
     useStore.getState().openQuickCreate({
       dateKey: now.format('YYYY-MM-DD'),
       startMin,
@@ -194,6 +85,12 @@ function CreateMenu() {
     setOpen(false);
     const today = todayCN();
     useStore.getState().openTaskQuick({ mode: 'todo', startDate: today, dueDate: today, x: window.innerWidth / 2, y: 160 });
+  }
+
+  function createMission() {
+    setOpen(false);
+    const today = todayCN();
+    useStore.getState().openTaskQuick({ mode: 'task', startDate: today, dueDate: today, x: window.innerWidth / 2, y: 160 });
   }
 
   return (
@@ -212,6 +109,10 @@ function CreateMenu() {
             <span>📅</span>
             <span className="flex-1">新建事件</span>
             <Kbd>C</Kbd>
+          </button>
+          <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] text-tp hover:bg-[var(--hover-overlay)]" onClick={createMission}>
+            <span>▤</span>
+            <span className="flex-1">新建任务 / 跨天任务</span>
           </button>
           <button className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] text-tp hover:bg-[var(--hover-overlay)]" onClick={createTask}>
             <span>✓</span>

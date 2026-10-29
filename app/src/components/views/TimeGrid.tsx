@@ -3,7 +3,8 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { nowCN, todayCN } from '../../time';
 import { useStore } from '../../store/useStore';
 import type { Calendar, EventItem, TaskItem } from '../../types';
-import { calColorVars, isDone } from '../../types';
+import { calColorVars } from '../../types';
+import { useTimeViewport } from '../../hooks/useTimeViewport';
 import { layoutDayEvents } from '../../domain/layout';
 import { expandOccurrences, ruleToText } from '../../domain/recurrence';
 import { DAY_MINUTES, clamp, fmtTime, occurrenceOn, snapMinutes, startOfDayMs } from '../../domain/time';
@@ -47,9 +48,8 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
   const moveEvent = useStore((s) => s.moveEvent);
   const toggleTask = useStore((s) => s.toggleTask);
 
-  const hourH = settings.hourHeight;
+  const { hourH, scrollRef, rootRef } = useTimeViewport(days[0].format('YYYY-MM-DD') + ':' + days.length);
   const use24h = settings.use24h;
-  const scrollRef = useRef<HTMLDivElement>(null);
   const columnsRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -59,8 +59,6 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
   const setPendingBoth = (p: Pending | null) => { pendingRef.current = p; setPending(p); };
   const setDragBoth = (d: Drag | null) => { dragRef.current = d; setDrag(d); };
   const [nowMin, setNowMin] = useState(() => nowCN().hour() * 60 + nowCN().minute());
-  const rootRef = useRef<HTMLDivElement>(null);
-  const zoomToastAt = useRef(0);
 
   const calById = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars]);
   const visible = useMemo(
@@ -73,40 +71,6 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
   useEffect(() => {
     const t = setInterval(() => setNowMin(nowCN().hour() * 60 + nowCN().minute()), 30_000);
     return () => clearInterval(t);
-  }, []);
-
-  // 初始滚动：当前时间 -1 小时；凌晨回退到 6:00
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || el.scrollTop > 0) return;
-    const target = nowMin < 6 * 60 ? 6 * 60 : Math.max(0, nowMin - 60);
-    el.scrollTop = (target / 60) * hourH;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hourH]);
-
-  /* -------- Ctrl + 滚轮：缩放时间粒度（24~176px/小时） -------- */
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      const s = useStore.getState().settings;
-      const step = e.deltaY < 0 ? 8 : -8;
-      const next = clamp(s.hourHeight + step, 24, 176);
-      if (next === s.hourHeight) {
-        const now = Date.now();
-        if (now - zoomToastAt.current > 2000) {
-          zoomToastAt.current = now;
-          useStore.getState().pushToast(step > 0 ? '已到最大粒度（176px/小时）' : '已到最小粒度（24px/小时，全天一屏可见）');
-        }
-        return;
-      }
-      useStore.getState().updateSettings({ hourHeight: next });
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* -------- 事件实例展开 -------- */
@@ -131,7 +95,6 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
     const taskBars: TaskBarRow[] = [];
     const todoBars: TaskBarRow[] = [];
     for (const t of tasks) {
-      if (isDone(t.status)) continue;
       const from = t.startDate || t.dueDate;
       if (!from || !t.dueDate) continue;
       if (t.startDate) {
@@ -217,7 +180,7 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
         autoScroll(e.clientY);
         setDragBoth({
           ...drag, dayIndex: dayIndexFromClientX(e.clientX),
-          startMin: clamp(minFromClientY(e.clientY, fine) - drag.grabOffset, 0, DAY_MINUTES - drag.duration / 60_000),
+          startMin: clamp(minFromClientY(e.clientY, fine) - drag.grabOffset, 0, Math.max(0, DAY_MINUTES - drag.duration)),
         });
       } else {
         autoScroll(e.clientY);
@@ -463,11 +426,11 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
       </div>
 
       {/* 任务带（最高层）：跨天任务连体长条 */}
-      <div className="flex min-h-[26px] items-stretch border-b border-line bg-subtle" title="双击新建任务 · 按住滑动跨多天 · 点标题编辑 · 边缘拖拽改期">
+      <div className="flex min-h-[30px] shrink-0 items-stretch border-b border-line bg-subtle" title="双击新建任务 · 按住滑动跨多天 · 点标题编辑 · 边缘拖拽改期">
         <div className="w-14 shrink-0 pt-1.5 pl-2 text-[11px] text-ts">任务</div>
         <div
-          className="relative grid flex-1 content-start gap-x-0.5 gap-y-0.5 px-0.5 py-0.5"
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`, gridAutoRows: 'minmax(20px, auto)' }}
+          className="band-scroll relative grid min-w-0 flex-1 content-start gap-x-1 gap-y-1 p-1"
+          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`, gridAutoRows: 'minmax(var(--band-height), auto)' }}
           {...bandHandlers('task')}
         >
           {bandHighlight()}
@@ -484,12 +447,12 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
         </div>
       </div>
 
-      {/* 待办带（第二层）：单日 DDL；>3 折叠 */}
-      <div className="flex min-h-[26px] items-stretch border-b border-line bg-subtle" title="双击新建待办 · 点标题编辑">
+      {/* 待办带（第二层）：单日 DDL；超出高度后在带区内滚动 */}
+      <div className="flex min-h-[30px] shrink-0 items-stretch border-b border-line bg-subtle" title="双击新建待办 · 点标题编辑">
         <div className="w-14 shrink-0 pt-1.5 pl-2 text-[11px] text-ts">待办</div>
         <div
-          className="relative grid flex-1 content-start gap-x-0.5 gap-y-0.5 px-0.5 py-0.5"
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`, gridAutoRows: 'minmax(20px, auto)' }}
+          className="band-scroll relative grid min-w-0 flex-1 content-start gap-x-1 gap-y-1 p-1"
+          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`, gridAutoRows: 'minmax(var(--band-height), auto)' }}
           {...bandHandlers('todo')}
         >
           {renderBandBars(todoBars, bandActions, days[0].format('YYYY-MM-DD'), days.length)}
@@ -517,7 +480,7 @@ export default function TimeGrid({ days }: { days: Dayjs[] }) {
       </div>
 
       {/* 滚动主体 */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} data-testid="time-scroll" data-hour-height={hourH} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="flex" style={{ height: DAY_MINUTES / 60 * hourH }}>
           <div className="relative w-14 shrink-0">
             {Array.from({ length: 24 }, (_, h) => (
@@ -623,7 +586,7 @@ function AllDayChip({ ev, cal }: { ev: EventItem; cal?: Calendar }) {
   return (
     <button
       className="flex w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-left text-[11px] font-medium"
-      style={{ background: c.bg, color: c.fg }}
+      style={{ background: `color-mix(in srgb, ${c.bg} 74%, var(--bg-base))`, color: c.fg }}
       title={`${ev.title}${ev.rrule ? ` · ${ruleToText(ev.rrule)}` : ''}`}
       onClick={(e) => { e.stopPropagation(); useStore.getState().openDrawer(ev.id); }}
     >
@@ -651,14 +614,14 @@ function EventBlock({ ev, occ, pos, hourH, use24h, cal, isGhosted, isSelected, o
   const recurring = !!ev.rrule;
   return (
     <div
-      title={`${ev.title}${ev.location ? ` · ${ev.location}` : ''}${recurring ? ` · ${ruleToText(ev.rrule)}` : ''}`}
-      className={`group absolute z-[5] overflow-hidden rounded-md px-1.5 py-0.5 text-left transition-opacity ${isGhosted ? 'opacity-30' : ''}`}
+      title={`${fmtTime(occ.startMin, use24h)}–${fmtTime(occ.endMin, use24h)} · ${ev.title}${ev.location ? ` · ${ev.location}` : ''}${recurring ? ` · ${ruleToText(ev.rrule)}` : ''}`}
+      className={`event-block group absolute z-[5] overflow-hidden rounded-lg px-1.5 ${height < 30 ? 'py-0.5' : 'py-1'} text-left transition-opacity ${isGhosted ? 'opacity-30' : ''}`}
       style={{
         top: (occ.startMin / 60) * hourH,
         height,
         left: `calc(${pos.leftPct}% + 2px)`,
         width: `calc(${pos.widthPct}% - 4px)`,
-        background: c.bg,
+        background: `color-mix(in srgb, ${c.bg} 80%, var(--bg-base))`,
         color: c.fg,
         borderLeft: `3px solid ${c.bar}`,
         boxShadow: isSelected ? '0 0 0 2px var(--accent)' : undefined,
@@ -681,20 +644,20 @@ function EventBlock({ ev, occ, pos, hourH, use24h, cal, isGhosted, isSelected, o
         </>
       )}
 
-      <div className={`flex items-start gap-1 ${height < 30 ? 'flex-row items-center' : 'flex-col'}`}>
-        {height >= 30 && (
+      <div className={`flex gap-1 ${height < 42 ? 'flex-row items-center' : 'flex-col'}`}>
+        {height >= 42 && (
           <div className="flex w-full items-center gap-1 text-[11px] font-medium opacity-80">
             {recurring && <span className="text-[10px]">♻</span>}
             <span className="tabular-nums">{occ.continuesBefore ? '↑ ' : ''}{fmtTime(occ.startMin, use24h)}</span>
           </div>
         )}
-        {height < 30 && (
+        {height >= 30 && height < 42 && (
           <span className="shrink-0 text-[11px] font-medium opacity-80 tabular-nums">
             {recurring ? '♻ ' : ''}{occ.continuesBefore ? '↑ ' : fmtTime(occ.startMin, use24h)}
           </span>
         )}
         <div className="min-w-0 flex-1 truncate text-[12px] font-semibold leading-4">{ev.title}</div>
-        {height >= 48 && ev.location && <div className="truncate text-[11px] opacity-75">📍 {ev.location}</div>}
+        {height >= 64 && ev.location && <div className="truncate text-[11px] opacity-75">📍 {ev.location}</div>}
       </div>
     </div>
   );
