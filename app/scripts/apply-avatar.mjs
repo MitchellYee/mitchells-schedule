@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = process.argv[2] || path.join(root, 'assets', 'mitchell-mark-source.png');
+const source = process.argv[2] || path.join(root, 'assets', 'avatar.png');
 
 // 统一处理：中心方裁 + 512px，作为 canonical 头像
 const base = await sharp(source).resize(512, 512, { fit: 'cover', position: 'centre' }).png().toBuffer();
@@ -47,3 +47,4 @@ entry.writeUInt32LE(png256.length, 8);
 entry.writeUInt32LE(22, 12);
 await writeFile(path.join(root, 'assets', 'icon.ico'), Buffer.concat([header, entry, png256]));
 console.log('✓ assets/icon.ico (256px PNG-in-ICO)');
+
