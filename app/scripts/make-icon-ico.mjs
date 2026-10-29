@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const png = await sharp(path.join(root, 'assets', 'mitchell-mark-source.png'), { density: 300 }).resize(256, 256).png().toBuffer();
+const png = await sharp(path.join(root, 'assets', 'avatar.png'), { density: 300 }).resize(256, 256).png().toBuffer();
 
 // ICONDIR(6) + ICONDIRENTRY(16) + PNG
 const header = Buffer.alloc(6);
@@ -23,3 +23,4 @@ entry.writeUInt32LE(png.length, 8); // bytes
 entry.writeUInt32LE(22, 12);        // offset
 await writeFile(path.join(root, 'assets', 'icon.ico'), Buffer.concat([header, entry, png]));
 console.log('✓ assets/icon.ico (256px PNG-in-ICO)');
+
