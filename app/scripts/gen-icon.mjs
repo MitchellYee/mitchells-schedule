@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const svg = await readFile(path.join(root, 'assets', 'mitchell-mark-source.png'));
+const svg = await readFile(path.join(root, 'assets', 'avatar.png'));
 
 const targets = [
   ['assets/icon-512.png', 512],
@@ -19,3 +19,4 @@ for (const [file, size] of targets) {
   await sharp(svg, { density: 300 }).resize(size, size).png().toFile(path.join(root, file));
   console.log(`✓ ${file} (${size}px)`);
 }
+
