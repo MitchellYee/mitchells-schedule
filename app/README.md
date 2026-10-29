@@ -83,6 +83,7 @@ REST API 文档（含重复规则 rrule 与每日排程工作流）：[API.md](.
 npm run build      # 产物 dist/
 npm test           # 任务详情、兼容、校验、并发保存的回归检查
 npm run package:desktop # Windows 便携版输出到 releases/，双击 exe 运行
-npm run icon       # 由 assets/mitchell-mark-source.png 生成全套 PNG/ICO
+npm run icon       # 由 assets/avatar.png 生成全套 PNG/ICO
 npm run desktop    # 构建 + 启动桌面版
 ```
+
